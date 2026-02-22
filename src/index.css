@@ -1,0 +1,397 @@
+@import url('https://fonts.googleapis.com/css2?family=Cascadia+Code:wght@400;600&family=Segoe+UI:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 12%;
+    --foreground: 0 0% 83%;
+
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 83%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 83%;
+
+    --sidebar: 0 0% 15%;
+    --sidebar-foreground: 0 0% 78%;
+    --sidebar-hover: 0 0% 21%;
+    --sidebar-active: 203 100% 40%;
+
+    --editor: 0 0% 12%;
+    --editor-foreground: 0 0% 83%;
+    --editor-line: 200 5% 17%;
+    --editor-selection: 207 100% 29%;
+    --editor-gutter: 0 0% 53%;
+
+    --primary: 203 100% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 21%;
+    --secondary-foreground: 0 0% 83%;
+
+    --muted: 0 0% 24%;
+    --muted-foreground: 0 0% 62%;
+
+    --accent: 212 100% 61%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 86% 63%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 127 44% 58%;
+    --success-foreground: 0 0% 12%;
+    --warning: 42 100% 53%;
+    --warning-foreground: 0 0% 12%;
+    --info: 203 100% 40%;
+    --info-foreground: 0 0% 100%;
+
+    --syntax-keyword: 207 61% 59%;
+    --syntax-string: 20 47% 64%;
+    --syntax-number: 95 33% 73%;
+    --syntax-function: 60 50% 76%;
+    --syntax-variable: 203 99% 80%;
+    --syntax-comment: 101 29% 47%;
+    --syntax-type: 168 53% 55%;
+    --syntax-operator: 0 0% 83%;
+
+    --user-1: 203 100% 40%;
+    --user-2: 142 44% 58%;
+    --user-3: 286 51% 63%;
+    --user-4: 42 100% 53%;
+    --user-5: 0 86% 63%;
+    --user-6: 212 100% 61%;
+
+    --git-added: 127 44% 58%;
+    --git-modified: 42 100% 53%;
+    --git-deleted: 0 86% 63%;
+    --git-untracked: 0 0% 62%;
+
+    --border: 0 0% 24%;
+    --input: 0 0% 20%;
+    --ring: 203 100% 40%;
+    --radius: 0.125rem;
+
+    --tab: 0 0% 18%;
+    --tab-active: 0 0% 12%;
+    --tab-border: 0 0% 24%;
+    --tab-foreground: 0 0% 66%;
+    --tab-active-foreground: 0 0% 90%;
+
+    --statusbar: 203 100% 40%;
+    --statusbar-foreground: 0 0% 100%;
+
+    --terminal: 0 0% 7%;
+    --terminal-foreground: 0 0% 83%;
+
+    --minimap: 0 0% 12%;
+
+    --scrollbar: 0 0% 38%;
+    --scrollbar-hover: 0 0% 48%;
+
+    --breadcrumb: 0 0% 60%;
+    --breadcrumb-foreground: 0 0% 78%;
+
+    --sidebar-background: 0 0% 15%;
+    --sidebar-primary: 203 100% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 21%;
+    --sidebar-accent-foreground: 0 0% 83%;
+    --sidebar-border: 0 0% 24%;
+    --sidebar-ring: 203 100% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    font-feature-settings: normal;
+  }
+
+  #root {
+    width: 100%;
+    height: 100vh;
+  }
+
+  .font-mono,
+  code,
+  pre,
+  .monaco-editor {
+    font-family: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace !important;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--scrollbar));
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--scrollbar-hover));
+  }
+
+  ::selection {
+    background: hsl(var(--editor-selection) / 0.7);
+  }
+}
+
+@layer components {
+  .activity-bar-icon {
+    @apply flex items-center justify-center w-12 h-12 transition-colors relative;
+    color: hsl(var(--sidebar-foreground) / 0.75);
+  }
+
+  .activity-bar-icon:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--sidebar-hover));
+  }
+
+  .activity-bar-icon.active {
+    color: hsl(var(--foreground));
+    background: hsl(var(--sidebar-hover));
+  }
+
+  .activity-bar-icon.active::before {
+    content: '';
+    @apply absolute left-0 top-0 h-full w-0.5;
+    background: hsl(var(--primary));
+  }
+
+  .file-tree-item {
+    @apply flex items-center gap-2 px-2 py-[3px] text-[13px] cursor-pointer transition-colors;
+    color: hsl(var(--sidebar-foreground));
+    border-radius: 0;
+  }
+
+  .file-tree-item:hover {
+    background: hsl(var(--sidebar-hover));
+  }
+
+  .file-tree-item.active {
+    background: hsl(var(--sidebar-hover));
+    color: hsl(var(--foreground));
+  }
+
+  .editor-tab {
+    @apply flex items-center gap-2 px-3 h-9 text-xs cursor-pointer transition-colors;
+    border-right: 1px solid hsl(var(--tab-border));
+    background: hsl(var(--tab));
+    color: hsl(var(--tab-foreground));
+    min-width: 120px;
+  }
+
+  .editor-tab:hover {
+    background: hsl(var(--tab-active));
+    color: hsl(var(--foreground));
+  }
+
+  .editor-tab.active {
+    background: hsl(var(--tab-active));
+    color: hsl(var(--tab-active-foreground));
+    border-top: 1px solid hsl(var(--primary));
+  }
+
+  .panel-header {
+    @apply flex items-center justify-between px-4 h-8 text-[11px] font-semibold uppercase tracking-wide border-b;
+    color: hsl(var(--muted-foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .statusbar-item {
+    @apply flex items-center gap-1.5 px-2 h-6 text-[11px] cursor-pointer transition-colors;
+  }
+
+  .statusbar-item:hover {
+    background: hsl(0 0% 100% / 0.12);
+  }
+
+  .presence-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .chat-message {
+    @apply px-2.5 py-1.5 text-[13px] border;
+    border-radius: 3px;
+    max-width: 88%;
+  }
+
+  .chat-message.own {
+    @apply ml-auto;
+    background: hsl(var(--primary) / 0.18);
+    border-color: hsl(var(--primary) / 0.45);
+    color: hsl(var(--foreground));
+  }
+
+  .chat-message.other {
+    background: hsl(var(--secondary));
+    border-color: hsl(var(--border));
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .terminal-line {
+    @apply font-mono text-[13px] leading-6;
+  }
+
+  .terminal-prompt {
+    color: hsl(var(--accent));
+  }
+
+  .terminal-output {
+    color: hsl(var(--terminal-foreground));
+  }
+
+  .terminal-error {
+    color: hsl(var(--destructive));
+  }
+
+  .glow-primary,
+  .glow-accent {
+    box-shadow: none;
+  }
+
+  .gradient-text {
+    color: hsl(var(--foreground));
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+
+  .panel-enter {
+    animation: panelEnter 0.15s ease-out;
+  }
+
+  @keyframes panelEnter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .cursor-label {
+    @apply absolute -top-5 left-0 px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap;
+    border-radius: 2px;
+  }
+
+  .code-block {
+    @apply rounded-sm p-3 font-mono text-sm overflow-x-auto border;
+    background: hsl(var(--editor));
+    border-color: hsl(var(--border));
+  }
+
+  .kbd {
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-mono font-medium border;
+    border-radius: 2px;
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .resizer {
+    @apply transition-colors;
+    background: transparent;
+  }
+
+  .resizer:hover {
+    background: hsl(var(--primary) / 0.6);
+  }
+
+  .resizer-horizontal {
+    @apply cursor-col-resize w-1;
+  }
+
+  .resizer-vertical {
+    @apply cursor-row-resize h-1;
+  }
+}
+
+@layer utilities {
+  .line-numbers {
+    @apply text-right pr-4 select-none;
+    color: hsl(var(--editor-gutter));
+  }
+
+  .syntax-keyword { color: hsl(var(--syntax-keyword)); }
+  .syntax-string { color: hsl(var(--syntax-string)); }
+  .syntax-number { color: hsl(var(--syntax-number)); }
+  .syntax-function { color: hsl(var(--syntax-function)); }
+  .syntax-variable { color: hsl(var(--syntax-variable)); }
+  .syntax-comment { color: hsl(var(--syntax-comment)); }
+  .syntax-type { color: hsl(var(--syntax-type)); }
+  .syntax-operator { color: hsl(var(--syntax-operator)); }
+
+  .user-color-1 { color: hsl(var(--user-1)); }
+  .user-color-2 { color: hsl(var(--user-2)); }
+  .user-color-3 { color: hsl(var(--user-3)); }
+  .user-color-4 { color: hsl(var(--user-4)); }
+  .user-color-5 { color: hsl(var(--user-5)); }
+  .user-color-6 { color: hsl(var(--user-6)); }
+
+  .user-bg-1 { background-color: hsl(var(--user-1)); }
+  .user-bg-2 { background-color: hsl(var(--user-2)); }
+  .user-bg-3 { background-color: hsl(var(--user-3)); }
+  .user-bg-4 { background-color: hsl(var(--user-4)); }
+  .user-bg-5 { background-color: hsl(var(--user-5)); }
+  .user-bg-6 { background-color: hsl(var(--user-6)); }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.2s ease-out;
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-blink {
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+  }
+
+  .focus-ring:focus-visible {
+    --tw-ring-color: hsl(var(--primary));
+    --tw-ring-offset-color: hsl(var(--background));
+  }
+}

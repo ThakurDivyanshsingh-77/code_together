@@ -1,0 +1,19 @@
+{
+  "name": "codecollab-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.18.0"
+  }
+}
