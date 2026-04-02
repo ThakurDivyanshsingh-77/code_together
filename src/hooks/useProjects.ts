@@ -7,6 +7,7 @@ interface Project {
   name: string;
   description: string | null;
   owner_id: string;
+  current_role: string | null;
   created_at: string;
   updated_at: string;
 }

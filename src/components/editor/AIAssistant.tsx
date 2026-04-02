@@ -1,24 +1,62 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Loader2, Code, Wand2, Bug, RefreshCw } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Send, Sparkles, Loader2, Code, Wand2, Bug, RefreshCw, MessageSquareText, Copy } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
 
 interface AIAssistantProps {
   className?: string;
 }
 
-const quickActions = [
-  { icon: Code, label: 'Explain code', prompt: 'Explain the selected code in detail' },
-  { icon: Bug, label: 'Debug', prompt: 'Help me debug this code and find potential issues' },
-  { icon: RefreshCw, label: 'Refactor', prompt: 'Suggest ways to refactor and improve this code' },
-  { icon: Wand2, label: 'Generate', prompt: 'Generate code based on my description' },
+type AIAction = 'explain_selected_code' | 'fix_bugs' | 'refactor_code' | 'generate_function' | 'chat_about_file';
+
+interface QuickAction {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  action: AIAction;
+  prompt: string;
+}
+
+const quickActions: QuickAction[] = [
+  {
+    icon: Code,
+    label: 'Explain Selected',
+    action: 'explain_selected_code',
+    prompt: 'Explain the selected code in detail.',
+  },
+  {
+    icon: Bug,
+    label: 'Fix Bugs',
+    action: 'fix_bugs',
+    prompt: 'Find and fix bugs in this code.',
+  },
+  {
+    icon: RefreshCw,
+    label: 'Refactor',
+    action: 'refactor_code',
+    prompt: 'Refactor this code for readability and maintainability.',
+  },
+  {
+    icon: Wand2,
+    label: 'Generate Function',
+    action: 'generate_function',
+    prompt: 'Generate a function based on this requirement:',
+  },
+  {
+    icon: MessageSquareText,
+    label: 'Chat About File',
+    action: 'chat_about_file',
+    prompt: 'Review this file and help me understand it.',
+  },
 ];
 
 export const AIAssistant: React.FC<AIAssistantProps> = ({ className }) => {
-  const { aiMessages, sendAIMessage, isAILoading, tabs, activeTabId } = useEditorStore();
+  const { aiMessages, sendAIMessage, isAILoading, tabs, activeTabId, selectedCode } = useEditorStore();
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const activeTab = useMemo(() => tabs.find((tab) => tab.id === activeTabId) || null, [tabs, activeTabId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,54 +64,59 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ className }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [aiMessages]);
+  }, [aiMessages, isAILoading]);
 
-  const handleSend = (prompt?: string) => {
-    const message = prompt || inputValue.trim();
-    if (message) {
-      // Include context about current file
-      const activeTab = tabs.find(t => t.id === activeTabId);
-      const context = activeTab 
-        ? `[Currently editing: ${activeTab.name}]\n\n${message}`
-        : message;
-      
-      sendAIMessage(context);
+  const handleSend = (action: AIAction = 'chat_about_file', presetPrompt?: string) => {
+    const prompt = (presetPrompt || inputValue).trim();
+    if (!prompt) return;
+
+    if (action === 'explain_selected_code' && !selectedCode) {
+      toast.error('Select code in editor first');
+      return;
+    }
+
+    sendAIMessage({
+      action,
+      prompt,
+      selectedCode: selectedCode || undefined,
+      fileName: activeTab?.name,
+      fileLanguage: activeTab?.language,
+      fileContent: activeTab?.content,
+    });
+
+    if (!presetPrompt) {
       setInputValue('');
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend('chat_about_file');
     }
   };
 
   return (
-    <div className={cn("flex flex-col h-full bg-card", className)}>
-      {/* Header */}
+    <div className={cn('flex flex-col h-full bg-card', className)}>
       <div className="panel-header">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
           <span>AI Assistant</span>
         </div>
-        <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-primary/20 text-primary">
-          Beta
-        </span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-primary/20 text-primary">Gemini</span>
       </div>
 
-      {/* Quick actions */}
-      <div className="px-2 py-2 border-b border-border">
+      <div className="px-2 py-2 border-b border-border space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {quickActions.map((action) => (
             <button
               key={action.label}
-              onClick={() => handleSend(action.prompt)}
+              onClick={() => handleSend(action.action, action.prompt)}
               disabled={isAILoading}
               className={cn(
-                "flex items-center gap-1.5 px-2 py-1 text-[11px] rounded-sm border border-border",
-                "bg-secondary hover:bg-sidebar-hover transition-colors",
-                isAILoading && "opacity-50 cursor-not-allowed"
+                'flex items-center gap-1.5 px-2 py-1 text-[11px] rounded-sm border border-border',
+                'bg-secondary hover:bg-sidebar-hover transition-colors',
+                isAILoading && 'opacity-50 cursor-not-allowed'
               )}
             >
               <action.icon className="w-3 h-3" />
@@ -81,52 +124,60 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ className }) => {
             </button>
           ))}
         </div>
+
+        <div className="text-[11px] text-muted-foreground">
+          {activeTab ? `File: ${activeTab.name}` : 'No file open'}
+          {selectedCode ? ` | Selected: ${selectedCode.length} chars` : ' | No selection'}
+        </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
         {aiMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <Sparkles className="w-12 h-12 mb-3 opacity-20" />
             <p className="text-sm font-medium">AI Code Assistant</p>
-            <p className="text-xs mt-1">
-              Ask questions about your code, get explanations, or request help debugging.
-            </p>
+            <p className="text-xs mt-1">Explain, fix, refactor, generate functions, or chat about the active file.</p>
           </div>
         )}
 
         {aiMessages.map((message) => (
-          <div
-            key={message.id}
-            className={cn(
-              "flex flex-col gap-1",
-              message.role === 'user' && "items-end"
-            )}
-          >
-            <div 
+          <div key={message.id} className={cn('flex flex-col gap-1', message.role === 'user' && 'items-end')}>
+            <div
               className={cn(
-                "rounded-sm px-2.5 py-2 text-[13px] max-w-[94%] border",
-                message.role === 'user' 
-                  ? "bg-primary/20 border-primary/40 text-foreground" 
-                  : "bg-secondary border-border text-secondary-foreground"
+                'rounded-sm px-2.5 py-2 text-[13px] max-w-[94%] border',
+                message.role === 'user'
+                  ? 'bg-primary/20 border-primary/40 text-foreground'
+                  : 'bg-secondary border-border text-secondary-foreground'
               )}
             >
               {message.role === 'assistant' ? (
                 <div className="prose prose-sm prose-invert max-w-none">
                   <ReactMarkdown
                     components={{
-                      code: ({ node, className, children, ...props }) => {
-                        const isInline = !className;
+                      code: ({ className: codeClassName, children, ...props }) => {
+                        const isInline = !codeClassName;
                         return isInline ? (
                           <code className="px-1 py-0.5 rounded bg-muted text-xs font-mono" {...props}>
                             {children}
                           </code>
                         ) : (
-                          <pre className="code-block mt-2 mb-2">
-                            <code className="text-xs" {...props}>
-                              {children}
-                            </code>
-                          </pre>
+                          <div className="relative group">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(String(children).replace(/\n$/, ''));
+                                toast.success('Code copied to clipboard');
+                              }}
+                              className="absolute top-2 right-2 p-1 rounded-sm bg-sidebar text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-sidebar-hover hover:text-foreground z-10"
+                              title="Copy code"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <pre className="code-block mt-2 mb-2">
+                              <code className="text-xs" {...props}>
+                                {children}
+                              </code>
+                            </pre>
+                          </div>
                         );
                       },
                       p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
@@ -148,41 +199,34 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ className }) => {
             <span className="text-sm">Thinking...</span>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="p-2 border-t border-border">
         <div className="flex items-center gap-2 bg-input border border-border rounded-sm px-2 py-1.5">
           <textarea
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(event) => setInputValue(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask AI about your code..."
+            placeholder="Ask about this file, or ask to generate/fix/refactor..."
             rows={1}
             className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground resize-none"
           />
-          <button 
-            onClick={() => handleSend()}
+          <button
+            onClick={() => handleSend('chat_about_file')}
             disabled={!inputValue.trim() || isAILoading}
             className={cn(
-              "p-1.5 rounded-sm transition-colors border border-transparent",
+              'p-1.5 rounded-sm transition-colors border border-transparent',
               inputValue.trim() && !isAILoading
-                ? "bg-primary text-primary-foreground hover:bg-primary/90 border-primary/70" 
-                : "bg-muted text-muted-foreground border-border"
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary/70'
+                : 'bg-muted text-muted-foreground border-border'
             )}
           >
-            {isAILoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
+            {isAILoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          AI can make mistakes. Verify important information.
-        </p>
+        <p className="text-[10px] text-muted-foreground mt-2 text-center">AI can make mistakes. Verify important output.</p>
       </div>
     </div>
   );

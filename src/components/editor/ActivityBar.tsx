@@ -79,7 +79,8 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ className }) => {
             className={cn(
               "activity-bar-icon",
               (item.panel === 'terminal' && activeBottomPanel === 'terminal') && "active",
-              (item.panel && item.panel !== 'terminal' && activeRightPanel === item.panel) && "active"
+              (item.panel && item.panel !== 'terminal' && activeRightPanel === item.panel) && "active",
+              (!item.panel && activeActivityBar === item.id) && "active"
             )}
             title={item.label}
           >

@@ -37,18 +37,22 @@ export const InviteCollaboratorDialog: React.FC<InviteCollaboratorDialogProps> =
   const [loading, setLoading] = useState(false);
 
   const handleInvite = async () => {
+    if (loading) return;
+
     const parsed = emailSchema.safeParse(email);
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0].message);
+      toast.error(parsed.error.issues[0]?.message || "Please enter a valid email address");
       return;
     }
+
+    const normalizedEmail = parsed.data.toLowerCase();
 
     setLoading(true);
     try {
       await apiRequest(`/projects/${projectId}/collaborators`, {
         method: "POST",
         body: {
-          email: parsed.data,
+          email: normalizedEmail,
           role,
         },
       });
@@ -58,9 +62,15 @@ export const InviteCollaboratorDialog: React.FC<InviteCollaboratorDialogProps> =
       setRole("editor");
       setOpen(false);
     } catch (error) {
-      const message = (error as Error).message;
-      if (message.toLowerCase().includes("already")) {
+      const message = error instanceof Error ? error.message : "Failed to invite collaborator";
+      const normalizedMessage = message.toLowerCase();
+
+      if (normalizedMessage.includes("already")) {
         toast.error("This user is already a collaborator");
+      } else if (normalizedMessage.includes("only the project owner")) {
+        toast.error("Only the project owner can invite collaborators");
+      } else if (normalizedMessage.includes("no user found")) {
+        toast.error("No account found with this email. Ask them to sign up first.");
       } else {
         toast.error(message || "Failed to invite collaborator");
       }
@@ -91,7 +101,7 @@ export const InviteCollaboratorDialog: React.FC<InviteCollaboratorDialogProps> =
               placeholder="collaborator@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+              onKeyDown={(e) => e.key === "Enter" && !loading && handleInvite()}
             />
           </div>
           <div>
@@ -106,7 +116,7 @@ export const InviteCollaboratorDialog: React.FC<InviteCollaboratorDialogProps> =
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleInvite} className="w-full gap-2" disabled={loading}>
+          <Button onClick={handleInvite} className="w-full gap-2" disabled={loading || !email.trim()}>
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Send Invite
           </Button>

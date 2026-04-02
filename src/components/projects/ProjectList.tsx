@@ -29,13 +29,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useProjects } from '@/hooks/useProjects';
 import { useAuth } from '@/hooks/useAuth';
-import { InviteCollaboratorDialog } from './InviteCollaboratorDialog';
 import { ManageCollaboratorsDialog } from './ManageCollaboratorsDialog';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from '@/lib/time';
 
 interface ProjectListProps {
-  onSelectProject: (projectId: string) => void;
+  onSelectProject: (project: { id: string; name: string; ownerId: string; role: string | null }) => void;
 }
 
 export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => {
@@ -49,8 +48,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleEditProject = (project: { id: string; name: string; description: string | null }, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEditProject = (project: { id: string; name: string; description: string | null }) => {
     setEditingProject({ id: project.id, name: project.name, description: project.description || '' });
     setEditDialogOpen(true);
   };
@@ -96,13 +94,16 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
     setDialogOpen(false);
     
     if (data) {
-      onSelectProject(data.id);
+      onSelectProject({
+        id: data.id,
+        name: data.name,
+        ownerId: data.owner_id,
+        role: data.current_role,
+      });
     }
   };
 
-  const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
+  const handleDeleteProject = async (projectId: string) => {
     if (!confirm('Are you sure you want to delete this project? This cannot be undone.')) {
       return;
     }
@@ -223,7 +224,14 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
             {projects.map((project) => (
               <div
                 key={project.id}
-                onClick={() => onSelectProject(project.id)}
+                onClick={() =>
+                  onSelectProject({
+                    id: project.id,
+                    name: project.name,
+                    ownerId: project.owner_id,
+                    role: project.current_role,
+                  })
+                }
                 className="group p-6 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer transition-all"
               >
                 <div className="flex items-start justify-between">
@@ -243,7 +251,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="w-3 h-3" />
-                        Owner
+                        {(project.current_role || 'owner').replace(/^./, (value) => value.toUpperCase())}
                       </span>
                     </div>
                   </div>
@@ -256,7 +264,13 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {project.owner_id === user?.id && (
-                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleEditProject(project, e as any); }}>
+                        <DropdownMenuItem
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleEditProject(project);
+                          }}
+                        >
                           <Pencil className="w-4 h-4 mr-2" />
                           Rename / Edit
                         </DropdownMenuItem>
@@ -274,7 +288,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
                       {project.owner_id === user?.id && (
                         <DropdownMenuItem 
                           className="text-destructive focus:text-destructive"
-                          onClick={(e) => handleDeleteProject(project.id, e as any)}
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void handleDeleteProject(project.id);
+                          }}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete Project

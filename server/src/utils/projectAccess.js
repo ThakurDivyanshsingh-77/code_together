@@ -8,6 +8,8 @@ export const getProjectAccess = async (userId, projectId) => {
       exists: false,
       hasAccess: false,
       isOwner: false,
+      role: null,
+      canEdit: false,
       project: null,
     };
   }
@@ -19,6 +21,8 @@ export const getProjectAccess = async (userId, projectId) => {
       exists: false,
       hasAccess: false,
       isOwner: false,
+      role: null,
+      canEdit: false,
       project: null,
     };
   }
@@ -29,19 +33,28 @@ export const getProjectAccess = async (userId, projectId) => {
       exists: true,
       hasAccess: true,
       isOwner: true,
+      role: "owner",
+      canEdit: true,
       project,
     };
   }
 
-  const collaborator = await ProjectCollaborator.exists({
+  const collaborator = await ProjectCollaborator.findOne({
     project: project._id,
     user: userId,
-  });
+  })
+    .select("role")
+    .lean();
+
+  const role = collaborator?.role || null;
+  const canEdit = role === "editor" || role === "admin";
 
   return {
     exists: true,
     hasAccess: Boolean(collaborator),
     isOwner: false,
+    role,
+    canEdit,
     project,
   };
 };

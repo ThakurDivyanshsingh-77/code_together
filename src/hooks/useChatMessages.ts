@@ -1,42 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { ChatMessage } from "@/types/editor";
+import { ChatMessageRow, resolveCurrentChatUser, toChatMessage } from "@/lib/chat";
 
-interface ChatMessageRow {
-  id: string;
-  project_id: string;
-  user_id: string;
-  content: string;
-  type: string;
-  created_at: string;
-  user_name: string;
-  user_color: number;
-}
-
-interface ChatMessageWithProfile {
-  id: string;
-  userId: string;
-  userName: string;
-  userColor: number;
-  content: string;
-  timestamp: Date;
-  type: "text" | "code";
-}
-
-const toMessageWithProfile = (row: ChatMessageRow): ChatMessageWithProfile => ({
-  id: row.id,
-  userId: row.user_id,
-  userName: row.user_name || "Unknown",
-  userColor: row.user_color || 1,
-  content: row.content,
-  timestamp: new Date(row.created_at),
-  type: (row.type as "text" | "code") || "text",
-});
+export type { ChatMessageRow } from "@/lib/chat";
 
 export const useChatMessages = (projectId: string) => {
-  const { user } = useAuth();
-  const [messages, setMessages] = useState<ChatMessageWithProfile[]>([]);
+  const { user, profile } = useAuth();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentChatUser = useMemo(
+    () =>
+      resolveCurrentChatUser({
+        userId: user?.id,
+        profileUserId: profile?.user_id,
+        displayName: profile?.display_name,
+        color: profile?.color,
+      }),
+    [profile?.color, profile?.display_name, profile?.user_id, user?.id]
+  );
 
   const fetchMessages = useCallback(
     async (silent: boolean = false) => {
@@ -49,7 +32,7 @@ export const useChatMessages = (projectId: string) => {
       try {
         if (!silent) setLoading(true);
         const data = await apiRequest<ChatMessageRow[]>(`/projects/${projectId}/chat`);
-        setMessages((data || []).map(toMessageWithProfile));
+        setMessages((data || []).map((row) => toChatMessage(row, currentChatUser)));
       } catch (error) {
         if (!silent) {
           console.error("Failed to load chat messages:", error);
@@ -58,7 +41,7 @@ export const useChatMessages = (projectId: string) => {
         if (!silent) setLoading(false);
       }
     },
-    [projectId]
+    [currentChatUser, projectId]
   );
 
   useEffect(() => {
@@ -77,7 +60,7 @@ export const useChatMessages = (projectId: string) => {
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!user || !projectId) return;
+      if (!currentChatUser.id || !projectId) return;
 
       try {
         const newMessage = await apiRequest<ChatMessageRow>(`/projects/${projectId}/chat`, {
@@ -86,7 +69,7 @@ export const useChatMessages = (projectId: string) => {
         });
 
         setMessages((prev) => {
-          const mappedMessage = toMessageWithProfile(newMessage);
+          const mappedMessage = toChatMessage(newMessage, currentChatUser);
           if (prev.some((message) => message.id === mappedMessage.id)) return prev;
           return [...prev, mappedMessage];
         });
@@ -94,7 +77,7 @@ export const useChatMessages = (projectId: string) => {
         console.error("Failed to send message:", error);
       }
     },
-    [projectId, user]
+    [currentChatUser, projectId]
   );
 
   return { messages, loading, sendMessage };

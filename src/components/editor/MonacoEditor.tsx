@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { useEditorStore } from '@/store/editorStore';
-import { Loader2, Code, Play, Terminal } from 'lucide-react';
+import { Loader2, Code, Eye, Play, Terminal, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { executeCode, isExecutableLanguage, getLanguageInfo, SupportedLanguage } from '@/lib/sandboxExecutor';
 
@@ -19,6 +19,8 @@ interface MonacoEditorProps {
   onContentChange?: (fileId: string, content: string) => void;
   onCursorChange?: (line: number, column: number) => void;
   collaboratorCursors?: CollaboratorCursor[];
+  readOnly?: boolean;
+  readOnlyReason?: string;
 }
 
 interface QuickExecutionResult {
@@ -32,15 +34,19 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   onContentChange,
   onCursorChange,
   collaboratorCursors = [],
+  readOnly = false,
+  readOnlyReason,
 }) => {
   const {
     tabs,
     activeTabId,
     updateFileContent,
-    collaborators,
-    cursors,
     setActiveBottomPanel,
-    activeBottomPanel
+    activeBottomPanel,
+    setSelectedCode,
+    editorFontSize,
+    editorWordWrap,
+    editorMinimap,
   } = useEditorStore();
 
   const [isRunning, setIsRunning] = useState(false);
@@ -48,11 +54,16 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
 
+  useEffect(() => {
+    setSelectedCode('');
+  }, [activeTabId, setSelectedCode]);
+
   const editorOptions = {
-    fontSize: 13,
+    fontSize: editorFontSize,
     fontFamily: "'Cascadia Code', 'JetBrains Mono', Consolas, monospace",
     fontLigatures: true,
-    minimap: { enabled: true, scale: 1 },
+    minimap: { enabled: editorMinimap, scale: 1 },
+    wordWrap: editorWordWrap,
     scrollBeyondLastLine: false,
     smoothScrolling: true,
     cursorBlinking: 'smooth' as const,
@@ -71,9 +82,12 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
       horizontalScrollbarSize: 10,
       useShadows: false,
     },
+    readOnly,
   };
 
   const handleEditorChange = (value: string | undefined) => {
+    if (readOnly) return;
+
     if (activeTab && value !== undefined) {
       updateFileContent(activeTab.fileId, value);
       onContentChange?.(activeTab.fileId, value);
@@ -84,6 +98,12 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     if (!activeTab || isRunning) return;
 
     const language = activeTab.language;
+    if (language === 'html') {
+      setActiveBottomPanel('terminal');
+      setQuickResult(null);
+      return;
+    }
+
     if (!isExecutableLanguage(language)) return;
 
     setIsRunning(true);
@@ -113,7 +133,9 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     setQuickResult(null);
   };
 
+  const isHtmlPreviewable = activeTab?.language === 'html';
   const isExecutable = activeTab && isExecutableLanguage(activeTab.language);
+  const hasPrimaryRunAction = Boolean(activeTab && (isExecutable || isHtmlPreviewable));
 
   if (!activeTab) {
     return (
@@ -131,83 +153,83 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
   return (
     <div className={cn('relative h-full bg-editor', className)}>
-      {isExecutable && (
-        <div className="absolute top-2 left-4 z-10 flex items-center gap-2">
-          {(() => {
-            const langInfo = getLanguageInfo(activeTab.language);
-            return (
-              <button
-                onClick={handleRunCode}
-                disabled={isRunning}
-                className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-xs font-medium border border-primary/50',
-                  'bg-primary/90 text-primary-foreground hover:bg-primary transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-              >
-                {isRunning ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>{activeTab.language === 'python' ? 'Loading Python...' : 'Running...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5" />
-                    <span>Run {langInfo.icon}</span>
-                  </>
-                )}
-              </button>
-            );
-          })()}
-
-          <button
-            onClick={handleOpenTerminal}
-            className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-xs font-medium border border-border',
-              'bg-muted text-muted-foreground hover:bg-muted/80 transition-colors',
-              activeBottomPanel === 'terminal' && 'ring-1 ring-primary'
-            )}
-            title="Open Terminal"
-          >
-            <Terminal className="w-3.5 h-3.5" />
-          </button>
+      {readOnly && (
+        <div className="absolute top-2 left-4 z-20 flex items-center gap-1.5 rounded-sm border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
+          <Lock className="h-3.5 w-3.5" />
+          <span>{readOnlyReason || "Read-only: file is locked"}</span>
         </div>
       )}
 
-      {(cursors.length > 0 || collaboratorCursors.length > 0) && (
-        <div className="absolute top-2 right-4 z-10 flex items-center gap-2">
-          {cursors
-            .filter((cursor) => cursor.fileName === activeTab.name)
-            .map((cursor) => {
-              const user = collaborators.find((entry) => entry.id === cursor.userId);
-              if (!user) return null;
-
-              return (
+      <div className="absolute top-2 right-6 z-10 flex items-center gap-3">
+        {collaboratorCursors.length > 0 && (
+          <div className="flex items-center gap-2">
+            {collaboratorCursors
+              .filter((cursor) => cursor.filePath === activeTab.path)
+              .map((cursor) => (
                 <div
                   key={cursor.userId}
                   className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs font-medium"
-                  style={{ backgroundColor: `hsl(var(--user-${user.color}))` }}
+                  style={{ backgroundColor: `hsl(var(--user-${cursor.color}))` }}
                 >
-                  <span className="text-primary-foreground">{user.name}</span>
+                  <span className="text-primary-foreground">{cursor.userName}</span>
                   <span className="text-primary-foreground/70">Line {cursor.line}</span>
                 </div>
-              );
-            })}
+              ))}
+          </div>
+        )}
 
-          {collaboratorCursors
-            .filter((cursor) => cursor.filePath === activeTab.path)
-            .map((cursor) => (
-              <div
-                key={cursor.userId}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs font-medium"
-                style={{ backgroundColor: `hsl(var(--user-${cursor.color}))` }}
-              >
-                <span className="text-primary-foreground">{cursor.userName}</span>
-                <span className="text-primary-foreground/70">Line {cursor.line}</span>
-              </div>
-            ))}
-        </div>
-      )}
+        {hasPrimaryRunAction && (
+          <div className="flex items-center gap-2">
+            {(() => {
+              const langInfo = getLanguageInfo(activeTab.language);
+              return (
+                <button
+                  onClick={handleRunCode}
+                  disabled={isRunning}
+                  className={cn(
+                    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-xs font-medium border border-primary/50',
+                    'bg-primary/90 text-primary-foreground hover:bg-primary transition-colors',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                >
+                  {isRunning ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>{activeTab.language === 'python' ? 'Loading Python...' : 'Running...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      {isHtmlPreviewable ? (
+                        <>
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Preview HTML</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5" />
+                          <span>Run {langInfo.icon}</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </button>
+              );
+            })()}
+
+            <button
+              onClick={handleOpenTerminal}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-xs font-medium border border-border',
+                'bg-muted text-muted-foreground hover:bg-muted/80 transition-colors',
+                activeBottomPanel === 'terminal' && 'ring-1 ring-primary'
+              )}
+              title="Open Terminal"
+            >
+              <Terminal className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
 
       {quickResult && (
         <div className="absolute bottom-4 left-4 right-4 z-10 max-h-48 overflow-auto rounded-sm border border-border bg-card/95 backdrop-blur-sm shadow-xl">
@@ -292,6 +314,19 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
           editor.onDidChangeCursorPosition((event) => {
             onCursorChange?.(event.position.lineNumber, event.position.column);
+          });
+
+          editor.onDidChangeCursorSelection((event) => {
+            const model = editor.getModel();
+            const selection = event.selection;
+
+            if (!model || selection.isEmpty()) {
+              setSelectedCode('');
+              return;
+            }
+
+            const selectionText = model.getValueInRange(selection).trim();
+            setSelectedCode(selectionText);
           });
         }}
       />

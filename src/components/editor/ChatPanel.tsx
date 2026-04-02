@@ -3,6 +3,7 @@ import { Send, MoreVertical, Loader2 } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useChatMessages } from '@/hooks/useChatMessages';
+import { isOwnChatMessage, resolveCurrentChatUser } from '@/lib/chat';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from '@/lib/time';
 
@@ -20,6 +21,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
 
   const isPersisted = !!projectId;
   const displayMessages = isPersisted ? messages : storeMessages;
+  const persistedCurrentUser = resolveCurrentChatUser({
+    userId: user?.id,
+    profileUserId: profile?.user_id,
+    displayName: profile?.display_name,
+    color: profile?.color,
+    fallbackDisplayName: currentUser.name,
+    fallbackColor: currentUser.color,
+  });
 
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -50,7 +59,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
   };
 
   const onlineUsers = collaborators.filter(u => u.isOnline);
-  const currentUserId = isPersisted ? user?.id : currentUser.id;
+  const currentUserId = isPersisted ? persistedCurrentUser.id : currentUser.id;
 
   return (
     <div className={cn("flex flex-col h-full bg-card", className)}>
@@ -70,7 +79,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-secondary text-[11px]">
           <span 
             className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: `hsl(var(--user-${isPersisted ? (profile?.color || 1) : currentUser.color}))` }}
+            style={{ backgroundColor: `hsl(var(--user-${isPersisted ? persistedCurrentUser.color : currentUser.color}))` }}
           />
           <span>You</span>
         </div>
@@ -99,7 +108,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
           </p>
         ) : (
           displayMessages.map((message) => {
-            const isOwn = message.userId === currentUserId;
+            const isOwn = isOwnChatMessage(message.userId, currentUserId);
             return (
               <div
                 key={message.id}

@@ -31,10 +31,31 @@ const fileSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    revision: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     parentPath: {
       type: String,
       default: null,
       trim: true,
+    },
+    lockOwner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    lockOwnerName: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    lockExpiresAt: {
+      type: Date,
+      default: null,
+      index: true,
     },
   },
   {

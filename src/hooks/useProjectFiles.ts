@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "@/lib/api";
-import { FileNode, getLanguageFromFileName } from "@/types/editor";
+import { FileLock, FileNode, getLanguageFromFileName } from "@/types/editor";
+
+interface DbFileLock {
+  user_id: string;
+  user_name: string | null;
+  expires_at: string;
+}
 
 interface DbFile {
   id: string;
@@ -10,10 +16,38 @@ interface DbFile {
   type: "file" | "folder";
   content: string | null;
   language: string | null;
+  revision: number;
+  locked: boolean;
   parent_path: string | null;
+  lock: DbFileLock | null;
+  last_updated: string;
   created_at: string;
   updated_at: string;
 }
+
+interface FileLockMutationResponse {
+  success: boolean;
+  released?: boolean;
+  file: DbFile;
+}
+
+interface UpdateFileMetadataInput {
+  name?: string;
+  path?: string;
+  parent_path?: string | null;
+}
+
+const DEFAULT_LOCK_TTL_SECONDS = 60;
+
+const toFileLock = (lock: DbFileLock | null): FileLock | null => {
+  if (!lock) return null;
+
+  return {
+    userId: lock.user_id,
+    userName: lock.user_name,
+    expiresAt: lock.expires_at,
+  };
+};
 
 // Convert flat DB files to nested FileNode tree
 const buildFileTree = (files: DbFile[]): FileNode[] => {
@@ -28,6 +62,11 @@ const buildFileTree = (files: DbFile[]): FileNode[] => {
       path: file.path,
       language: file.language || (file.type === "file" ? getLanguageFromFileName(file.name) : undefined),
       content: file.content || undefined,
+      revision: file.revision || 0,
+      locked: Boolean(file.locked),
+      lock: toFileLock(file.lock),
+      createdAt: file.created_at,
+      updatedAt: file.updated_at,
       children: file.type === "folder" ? [] : undefined,
       isOpen: file.type === "folder",
     });
@@ -61,6 +100,31 @@ const buildFileTree = (files: DbFile[]): FileNode[] => {
 
   return sortNodes(rootNodes);
 };
+
+const upsertDbFile = (files: DbFile[], updatedFile: DbFile): DbFile[] => {
+  const index = files.findIndex((entry) => entry.id === updatedFile.id);
+  if (index === -1) {
+    return [...files, updatedFile];
+  }
+
+  const nextFiles = [...files];
+  nextFiles[index] = updatedFile;
+  return nextFiles;
+};
+
+const getParentPath = (path: string): string | null => {
+  const normalizedPath = path.trim();
+  const lastSlashIndex = normalizedPath.lastIndexOf("/");
+
+  if (lastSlashIndex <= 0) {
+    return null;
+  }
+
+  return normalizedPath.slice(0, lastSlashIndex);
+};
+
+const joinFilePath = (parentPath: string | null, name: string) =>
+  parentPath ? `${parentPath}/${name}` : `/${name}`;
 
 export const useProjectFiles = (projectId: string | null) => {
   const [files, setFiles] = useState<FileNode[]>([]);
@@ -99,23 +163,12 @@ export const useProjectFiles = (projectId: string | null) => {
     fetchFiles();
   }, [fetchFiles]);
 
-  useEffect(() => {
-    if (!projectId) return;
-
-    const interval = window.setInterval(() => {
-      fetchFiles(true);
-    }, 2000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [projectId, fetchFiles]);
-
   const createFile = useCallback(
     async (parentPath: string | null, name: string, type: "file" | "folder") => {
       if (!projectId) return { error: new Error("No project selected") };
 
-      const path = parentPath ? `${parentPath}/${name}` : `/${name}`;
+      const normalizedParentPath = !parentPath || parentPath === "/" ? null : parentPath;
+      const path = normalizedParentPath ? `${normalizedParentPath}/${name}` : `/${name}`;
       const language = type === "file" ? getLanguageFromFileName(name) : null;
 
       const getContent = () => {
@@ -141,7 +194,7 @@ export const useProjectFiles = (projectId: string | null) => {
             type,
             content: getContent(),
             language,
-            parent_path: parentPath,
+            parent_path: normalizedParentPath,
           },
         });
 
@@ -170,13 +223,116 @@ export const useProjectFiles = (projectId: string | null) => {
         });
 
         setDbFiles((prev) => {
-          const nextFiles = prev.map((file) => (file.id === fileId ? { ...file, content: updated.content } : file));
+          const nextFiles = upsertDbFile(prev, updated);
           setFiles(buildFileTree(nextFiles));
           return nextFiles;
         });
 
-        return { error: null };
+        return { data: updated, error: null };
       } catch (error) {
+        return { error: error as Error };
+      }
+    },
+    [projectId]
+  );
+
+  const updateFileMetadata = useCallback(
+    async (fileId: string, updates: UpdateFileMetadataInput) => {
+      if (!projectId) return { error: new Error("No project selected") };
+
+      try {
+        const updated = await apiRequest<DbFile>(`/projects/${projectId}/files/${fileId}`, {
+          method: "PATCH",
+          body: updates,
+        });
+
+        await fetchFiles(true);
+        return { data: updated, error: null };
+      } catch (error) {
+        return { error: error as Error };
+      }
+    },
+    [fetchFiles, projectId]
+  );
+
+  const renameNode = useCallback(
+    async (node: FileNode, nextName: string) => {
+      const trimmedName = nextName.trim();
+      if (!trimmedName) {
+        return { error: new Error("Name is required") };
+      }
+
+      const parentPath = getParentPath(node.path);
+      return updateFileMetadata(node.id, {
+        name: trimmedName,
+        parent_path: parentPath,
+        path: joinFilePath(parentPath, trimmedName),
+      });
+    },
+    [updateFileMetadata]
+  );
+
+  const moveNode = useCallback(
+    async (node: FileNode, destinationParentPath: string | null) => {
+      const normalizedParentPath =
+        !destinationParentPath || destinationParentPath === "/" ? null : destinationParentPath;
+
+      return updateFileMetadata(node.id, {
+        name: node.name,
+        parent_path: normalizedParentPath,
+        path: joinFilePath(normalizedParentPath, node.name),
+      });
+    },
+    [updateFileMetadata]
+  );
+
+  const acquireFileLock = useCallback(
+    async (fileId: string, ttlSeconds: number = DEFAULT_LOCK_TTL_SECONDS, silent: boolean = false) => {
+      if (!projectId) return { error: new Error("No project selected") };
+
+      try {
+        const response = await apiRequest<FileLockMutationResponse>(`/projects/${projectId}/files/${fileId}/lock`, {
+          method: "POST",
+          body: { ttl_seconds: ttlSeconds },
+        });
+
+        setDbFiles((prev) => {
+          const nextFiles = upsertDbFile(prev, response.file);
+          setFiles(buildFileTree(nextFiles));
+          return nextFiles;
+        });
+
+        return { data: response.file, error: null };
+      } catch (error) {
+        if (!silent) {
+          console.error("Failed to acquire file lock:", error);
+        }
+        return { error: error as Error };
+      }
+    },
+    [projectId]
+  );
+
+  const releaseFileLock = useCallback(
+    async (fileId: string, silent: boolean = false) => {
+      if (!projectId) return { error: new Error("No project selected") };
+
+      try {
+        const response = await apiRequest<FileLockMutationResponse>(`/projects/${projectId}/files/${fileId}/lock`, {
+          method: "DELETE",
+        });
+
+        setDbFiles((prev) => {
+          const nextFiles = upsertDbFile(prev, response.file);
+          setFiles(buildFileTree(nextFiles));
+          return nextFiles;
+        });
+
+        return { data: response.file, error: null };
+      } catch (error) {
+        if (!silent) {
+          console.error("Failed to release file lock:", error);
+        }
         return { error: error as Error };
       }
     },
@@ -231,6 +387,10 @@ export const useProjectFiles = (projectId: string | null) => {
     loading,
     createFile,
     updateFileContent,
+    renameNode,
+    moveNode,
+    acquireFileLock,
+    releaseFileLock,
     deleteFile,
     getFileById,
     refetch: fetchFiles,

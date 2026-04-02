@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { FileNode, EditorTab, User, ChatMessage, CursorPosition, AIMessage, getLanguageFromFileName } from '@/types/editor';
+import { apiRequest } from '@/lib/api';
 
 // Sample file structure for demo
 const sampleFiles: FileNode[] = [
@@ -328,6 +329,26 @@ const sampleMessages: ChatMessage[] = [
   },
 ];
 
+type AIAction = 'explain_selected_code' | 'fix_bugs' | 'refactor_code' | 'generate_function' | 'chat_about_file';
+
+interface SendAIMessageInput {
+  action: AIAction;
+  prompt: string;
+  fileName?: string;
+  fileLanguage?: string;
+  fileContent?: string;
+  selectedCode?: string;
+}
+
+interface AIChatResponse {
+  reply: string;
+  model: string;
+}
+
+interface FlatFileNode extends Omit<FileNode, 'children'> {
+  parentPath: string | null;
+}
+
 interface EditorState {
   // File system
   files: FileNode[];
@@ -348,8 +369,12 @@ interface EditorState {
   // AI Assistant
   aiMessages: AIMessage[];
   isAILoading: boolean;
+  selectedCode: string;
   
   // UI state
+  editorFontSize: number;
+  editorWordWrap: 'on' | 'off';
+  editorMinimap: boolean;
   sidebarWidth: number;
   rightPanelWidth: number;
   bottomPanelHeight: number;
@@ -357,23 +382,35 @@ interface EditorState {
   activeBottomPanel: 'terminal' | 'output' | null;
   activeActivityBar: 'files' | 'search' | 'git' | 'extensions' | 'settings';
   
+  // Extensions
+  installedExtensions: string[];
+  
   // Actions
   openFile: (fileId: string) => void;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   updateFileContent: (fileId: string, content: string) => void;
   updateFileContentLocal: (fileId: string, content: string) => void;
+  applyRemoteFileContent: (fileId: string, content: string, revision?: number) => void;
+  markFileSaved: (fileId: string, updates?: Partial<FileNode>) => void;
   toggleFolder: (folderId: string) => void;
   sendMessage: (content: string) => void;
-  sendAIMessage: (content: string) => void;
+  sendAIMessage: (input: SendAIMessageInput) => Promise<void>;
+  setSelectedCode: (content: string) => void;
   setSidebarWidth: (width: number) => void;
   setRightPanelWidth: (width: number) => void;
   setBottomPanelHeight: (height: number) => void;
   setActiveRightPanel: (panel: 'chat' | 'ai' | null) => void;
   setActiveBottomPanel: (panel: 'terminal' | 'output' | null) => void;
   setActiveActivityBar: (activity: 'files' | 'search' | 'git' | 'extensions' | 'settings') => void;
+  setEditorFontSize: (size: number) => void;
+  setEditorWordWrap: (wrap: 'on' | 'off') => void;
+  setEditorMinimap: (enabled: boolean) => void;
+  toggleExtension: (id: string) => void;
   createFile: (parentPath: string, name: string) => void;
   createFolder: (parentPath: string, name: string) => void;
+  renameNode: (nodeId: string, nextName: string) => void;
+  moveNode: (nodeId: string, destinationParentPath: string | null) => void;
   deleteFile: (fileId: string) => void;
   setFilesFromDb: (files: FileNode[]) => void;
   setCurrentUser: (user: User) => void;
@@ -405,6 +442,141 @@ const updateFileInTree = (files: FileNode[], id: string, updates: Partial<FileNo
   });
 };
 
+const getParentPathFromPath = (path: string): string | null => {
+  const lastSlashIndex = path.lastIndexOf('/');
+  if (lastSlashIndex <= 0) {
+    return null;
+  }
+
+  return path.slice(0, lastSlashIndex);
+};
+
+const joinNodePath = (parentPath: string | null, name: string) =>
+  parentPath ? `${parentPath}/${name}` : `/${name}`;
+
+const replacePathPrefix = (path: string, currentPrefix: string, nextPrefix: string): string => {
+  if (path === currentPrefix) {
+    return nextPrefix;
+  }
+
+  if (path.startsWith(`${currentPrefix}/`)) {
+    return `${nextPrefix}${path.slice(currentPrefix.length)}`;
+  }
+
+  return path;
+};
+
+const flattenFilesWithParents = (
+  files: FileNode[],
+  parentPath: string | null = null
+): FlatFileNode[] => {
+  return files.flatMap((file) => {
+    const { children, ...rest } = file;
+    const flatNode: FlatFileNode = {
+      ...rest,
+      parentPath,
+    };
+
+    if (!children?.length) {
+      return [flatNode];
+    }
+
+    return [flatNode, ...flattenFilesWithParents(children, file.path)];
+  });
+};
+
+const buildTreeFromFlatNodes = (flatNodes: FlatFileNode[]): FileNode[] => {
+  const nodeMap = new Map<string, FileNode>();
+  const roots: FileNode[] = [];
+
+  flatNodes.forEach((node) => {
+    nodeMap.set(node.path, {
+      id: node.id,
+      name: node.name,
+      type: node.type,
+      path: node.path,
+      language: node.language,
+      content: node.content,
+      revision: node.revision,
+      locked: node.locked,
+      lock: node.lock,
+      updatedAt: node.updatedAt,
+      createdAt: node.createdAt,
+      isOpen: node.isOpen,
+      children: node.type === 'folder' ? [] : undefined,
+    });
+  });
+
+  flatNodes.forEach((node) => {
+    const currentNode = nodeMap.get(node.path);
+    if (!currentNode) return;
+
+    if (node.parentPath && nodeMap.has(node.parentPath)) {
+      const parentNode = nodeMap.get(node.parentPath);
+      if (parentNode) {
+        parentNode.children = parentNode.children || [];
+        parentNode.children.push(currentNode);
+      }
+    } else {
+      roots.push(currentNode);
+    }
+  });
+
+  const sortTree = (nodes: FileNode[]): FileNode[] =>
+    nodes
+      .sort((left, right) => {
+        if (left.type !== right.type) {
+          return left.type === 'folder' ? -1 : 1;
+        }
+
+        return left.name.localeCompare(right.name);
+      })
+      .map((node) => ({
+        ...node,
+        children: node.children ? sortTree(node.children) : undefined,
+      }));
+
+  return sortTree(roots);
+};
+
+const syncTabsWithFiles = (tabs: EditorTab[], files: FileNode[]) => {
+  const fileMap = new Map(
+    flattenFilesWithParents(files)
+      .filter((node) => node.type === 'file')
+      .map((node) => [node.id, node])
+  );
+
+  return tabs
+    .filter((tab) => fileMap.has(tab.fileId))
+    .map((tab) => {
+      const file = fileMap.get(tab.fileId);
+      if (!file) {
+        return tab;
+      }
+
+      return {
+        ...tab,
+        name: file.name,
+        path: file.path,
+        language: file.language || getLanguageFromFileName(file.name),
+        content: tab.isDirty ? tab.content : file.content ?? tab.content,
+        revision: tab.isDirty ? tab.revision : file.revision ?? tab.revision,
+      };
+    });
+};
+
+const getNextActiveTabId = (tabs: EditorTab[], activeTabId: string | null) => {
+  if (!tabs.length) {
+    return null;
+  }
+
+  if (activeTabId && tabs.some((tab) => tab.id === activeTabId)) {
+    return activeTabId;
+  }
+
+  return tabs[tabs.length - 1].id;
+};
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   // Initial state
   files: sampleFiles,
@@ -420,12 +592,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   messages: sampleMessages,
   aiMessages: [],
   isAILoading: false,
+  selectedCode: '',
+  editorFontSize: 13,
+  editorWordWrap: 'off',
+  editorMinimap: true,
   sidebarWidth: 280,
   rightPanelWidth: 320,
   bottomPanelHeight: 200,
   activeRightPanel: null,
   activeBottomPanel: null,
   activeActivityBar: 'files',
+  installedExtensions: ['vscode-icons'],
 
   // Actions
   openFile: (fileId: string) => {
@@ -447,6 +624,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         path: file.path,
         language: file.language || getLanguageFromFileName(file.name),
         content: file.content || '',
+        revision: file.revision || 0,
         isDirty: false,
       };
       
@@ -527,36 +705,70 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ messages: [...state.messages, newMessage] });
   },
 
-  sendAIMessage: async (content: string) => {
+  sendAIMessage: async (input: SendAIMessageInput) => {
+    const prompt = String(input?.prompt || '').trim();
+    if (!prompt) return;
+
     const state = get();
-    
-    // Add user message
     const userMessage: AIMessage = {
       id: `ai-${Date.now()}`,
       role: 'user',
-      content,
+      content: prompt,
       timestamp: new Date(),
     };
-    
-    set({ 
+
+    const priorConversation = state.aiMessages.slice(-8).map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+
+    set({
       aiMessages: [...state.aiMessages, userMessage],
-      isAILoading: true 
+      isAILoading: true,
     });
 
-    // Simulate AI response (will be replaced with actual API call)
-    setTimeout(() => {
-      const aiResponse: AIMessage = {
+    try {
+      const response = await apiRequest<AIChatResponse>('/ai/chat', {
+        method: 'POST',
+        body: {
+          action: input.action,
+          prompt,
+          fileName: input.fileName || null,
+          fileLanguage: input.fileLanguage || null,
+          fileContent: input.fileContent || null,
+          selectedCode: input.selectedCode || null,
+          conversation: priorConversation,
+        },
+      });
+
+      const assistantMessage: AIMessage = {
         id: `ai-${Date.now() + 1}`,
         role: 'assistant',
-        content: `I analyzed your code. Here's what I found:\n\n\`\`\`typescript\n// Your code looks good! Here are some suggestions:\n// 1. Consider adding error boundaries\n// 2. You could memoize the expensive calculations\n// 3. Add TypeScript strict mode\n\`\`\`\n\nWould you like me to implement any of these improvements?`,
+        content: response.reply,
         timestamp: new Date(),
       };
-      
-      set(state => ({
-        aiMessages: [...state.aiMessages, aiResponse],
+
+      set((currentState) => ({
+        aiMessages: [...currentState.aiMessages, assistantMessage],
         isAILoading: false,
       }));
-    }, 1500);
+    } catch (error) {
+      const assistantMessage: AIMessage = {
+        id: `ai-${Date.now() + 1}`,
+        role: 'assistant',
+        content: `AI request failed: ${(error as Error).message}`,
+        timestamp: new Date(),
+      };
+
+      set((currentState) => ({
+        aiMessages: [...currentState.aiMessages, assistantMessage],
+        isAILoading: false,
+      }));
+    }
+  },
+
+  setSelectedCode: (content: string) => {
+    set({ selectedCode: content });
   },
 
   setSidebarWidth: (width: number) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
@@ -565,6 +777,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setActiveRightPanel: (panel) => set({ activeRightPanel: panel }),
   setActiveBottomPanel: (panel) => set({ activeBottomPanel: panel }),
   setActiveActivityBar: (activity) => set({ activeActivityBar: activity }),
+  setEditorFontSize: (size) => set({ editorFontSize: size }),
+  setEditorWordWrap: (wrap) => set({ editorWordWrap: wrap }),
+  setEditorMinimap: (enabled) => set({ editorMinimap: enabled }),
+  toggleExtension: (id) => set((state) => ({
+    installedExtensions: state.installedExtensions.includes(id) 
+      ? state.installedExtensions.filter(e => e !== id)
+      : [...state.installedExtensions, id]
+  })),
 
   createFile: (parentPath: string, name: string) => {
     const state = get();
@@ -606,6 +826,50 @@ def main():
 
 if __name__ == '__main__':
     main()
+`,
+        html: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${filename}</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #111827, #1f2937);
+        color: #f9fafb;
+      }
+
+      .card {
+        padding: 2rem;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+      }
+
+      h1 {
+        margin: 0 0 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Hello from ${filename}</h1>
+      <p>Edit this page and use Preview in the terminal panel.</p>
+    </main>
+  </body>
+</html>
+`,
+        css: `/* ${filename} */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+}
 `,
         json: `{
   "name": "${filename.replace('.json', '')}",
@@ -692,6 +956,150 @@ if __name__ == '__main__':
     }
   },
 
+  renameNode: (nodeId: string, nextName: string) => {
+    const trimmedName = nextName.trim();
+    if (!trimmedName) {
+      return;
+    }
+
+    const state = get();
+    const flatNodes = flattenFilesWithParents(state.files);
+    const targetNode = flatNodes.find((node) => node.id === nodeId);
+
+    if (!targetNode) {
+      return;
+    }
+
+    const nextPath = joinNodePath(targetNode.parentPath, trimmedName);
+    if (nextPath === targetNode.path) {
+      return;
+    }
+
+    const subtreeNodes = flatNodes.filter(
+      (node) => node.path === targetNode.path || node.path.startsWith(`${targetNode.path}/`)
+    );
+    const subtreeIds = new Set(subtreeNodes.map((node) => node.id));
+    const nextPaths = new Set(
+      subtreeNodes.map((node) => replacePathPrefix(node.path, targetNode.path, nextPath))
+    );
+
+    const hasConflict = flatNodes.some(
+      (node) => !subtreeIds.has(node.id) && nextPaths.has(node.path)
+    );
+    if (hasConflict) {
+      return;
+    }
+
+    const updatedNodes = flatNodes.map((node) => {
+      if (node.path === targetNode.path || node.path.startsWith(`${targetNode.path}/`)) {
+        const updatedPath = replacePathPrefix(node.path, targetNode.path, nextPath);
+        const updatedParentPath =
+          node.id === targetNode.id
+            ? targetNode.parentPath
+            : node.parentPath
+              ? replacePathPrefix(node.parentPath, targetNode.path, nextPath)
+              : null;
+
+        return {
+          ...node,
+          name: node.id === targetNode.id ? trimmedName : node.name,
+          path: updatedPath,
+          parentPath: updatedParentPath,
+        };
+      }
+
+      return node;
+    });
+
+    const nextFiles = buildTreeFromFlatNodes(updatedNodes);
+    const nextTabs = syncTabsWithFiles(state.tabs, nextFiles);
+    const nextActiveTabId = getNextActiveTabId(nextTabs, state.activeTabId);
+
+    set({
+      files: nextFiles,
+      tabs: nextTabs,
+      activeTabId: nextActiveTabId,
+      activeFileId: nextActiveTabId
+        ? nextTabs.find((tab) => tab.id === nextActiveTabId)?.fileId || null
+        : null,
+    });
+  },
+
+  moveNode: (nodeId: string, destinationParentPath: string | null) => {
+    const normalizedDestination =
+      !destinationParentPath || destinationParentPath === '/' ? null : destinationParentPath;
+
+    const state = get();
+    const flatNodes = flattenFilesWithParents(state.files);
+    const targetNode = flatNodes.find((node) => node.id === nodeId);
+
+    if (!targetNode) {
+      return;
+    }
+
+    if (
+      targetNode.type === 'folder' &&
+      normalizedDestination &&
+      (normalizedDestination === targetNode.path ||
+        normalizedDestination.startsWith(`${targetNode.path}/`))
+    ) {
+      return;
+    }
+
+    const nextPath = joinNodePath(normalizedDestination, targetNode.name);
+    if (nextPath === targetNode.path) {
+      return;
+    }
+
+    const subtreeNodes = flatNodes.filter(
+      (node) => node.path === targetNode.path || node.path.startsWith(`${targetNode.path}/`)
+    );
+    const subtreeIds = new Set(subtreeNodes.map((node) => node.id));
+    const nextPaths = new Set(
+      subtreeNodes.map((node) => replacePathPrefix(node.path, targetNode.path, nextPath))
+    );
+
+    const hasConflict = flatNodes.some(
+      (node) => !subtreeIds.has(node.id) && nextPaths.has(node.path)
+    );
+    if (hasConflict) {
+      return;
+    }
+
+    const updatedNodes = flatNodes.map((node) => {
+      if (node.path === targetNode.path || node.path.startsWith(`${targetNode.path}/`)) {
+        const updatedPath = replacePathPrefix(node.path, targetNode.path, nextPath);
+        const updatedParentPath =
+          node.id === targetNode.id
+            ? normalizedDestination
+            : node.parentPath
+              ? replacePathPrefix(node.parentPath, targetNode.path, nextPath)
+              : null;
+
+        return {
+          ...node,
+          path: updatedPath,
+          parentPath: updatedParentPath,
+        };
+      }
+
+      return node;
+    });
+
+    const nextFiles = buildTreeFromFlatNodes(updatedNodes);
+    const nextTabs = syncTabsWithFiles(state.tabs, nextFiles);
+    const nextActiveTabId = getNextActiveTabId(nextTabs, state.activeTabId);
+
+    set({
+      files: nextFiles,
+      tabs: nextTabs,
+      activeTabId: nextActiveTabId,
+      activeFileId: nextActiveTabId
+        ? nextTabs.find((tab) => tab.id === nextActiveTabId)?.fileId || null
+        : null,
+    });
+  },
+
   deleteFile: (fileId: string) => {
     const state = get();
     
@@ -705,18 +1113,34 @@ if __name__ == '__main__':
       });
     };
     
-    // Close any open tabs for this file
-    const tabToClose = state.tabs.find(tab => tab.fileId === fileId);
-    if (tabToClose) {
-      get().closeTab(tabToClose.id);
-    }
-    
-    set({ files: removeFromTree(state.files) });
+    const nextFiles = removeFromTree(state.files);
+    const nextTabs = syncTabsWithFiles(state.tabs, nextFiles);
+    const nextActiveTabId = getNextActiveTabId(nextTabs, state.activeTabId);
+
+    set({
+      files: nextFiles,
+      tabs: nextTabs,
+      activeTabId: nextActiveTabId,
+      activeFileId: nextActiveTabId
+        ? nextTabs.find((tab) => tab.id === nextActiveTabId)?.fileId || null
+        : null,
+    });
   },
 
   // New methods for database sync
   setFilesFromDb: (files: FileNode[]) => {
-    set({ files });
+    const state = get();
+    const nextTabs = syncTabsWithFiles(state.tabs, files);
+    const nextActiveTabId = getNextActiveTabId(nextTabs, state.activeTabId);
+
+    set({
+      files,
+      tabs: nextTabs,
+      activeTabId: nextActiveTabId,
+      activeFileId: nextActiveTabId
+        ? nextTabs.find((tab) => tab.id === nextActiveTabId)?.fileId || null
+        : null,
+    });
   },
 
   updateFileContentLocal: (fileId: string, content: string) => {
@@ -733,6 +1157,53 @@ if __name__ == '__main__':
       return tab;
     });
     
+    set({ files: newFiles, tabs: newTabs });
+  },
+
+  applyRemoteFileContent: (fileId: string, content: string, revision?: number) => {
+    const state = get();
+    const newFiles = updateFileInTree(state.files, fileId, {
+      content,
+      ...(revision !== undefined ? { revision } : {}),
+    });
+
+    const newTabs = state.tabs.map((tab) => {
+      if (tab.fileId !== fileId) {
+        return tab;
+      }
+
+      return {
+        ...tab,
+        content,
+        ...(revision !== undefined ? { revision } : {}),
+      };
+    });
+
+    set({ files: newFiles, tabs: newTabs });
+  },
+
+  markFileSaved: (fileId: string, updates: Partial<FileNode> = {}) => {
+    const state = get();
+    const newFiles = updateFileInTree(state.files, fileId, updates);
+    const shouldClearDirty =
+      updates.content !== undefined || updates.revision !== undefined || updates.updatedAt !== undefined;
+
+    const newTabs = state.tabs.map((tab) => {
+      if (tab.fileId !== fileId) {
+        return tab;
+      }
+
+      return {
+        ...tab,
+        name: updates.name ?? tab.name,
+        path: updates.path ?? tab.path,
+        language: updates.language || tab.language,
+        content: updates.content ?? tab.content,
+        revision: updates.revision ?? tab.revision,
+        isDirty: shouldClearDirty ? false : tab.isDirty,
+      };
+    });
+
     set({ files: newFiles, tabs: newTabs });
   },
 

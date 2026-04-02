@@ -10,7 +10,8 @@ import {
   Play,
   MessageSquare,
   Sparkles,
-  Loader2
+  Loader2,
+  Lock
 } from 'lucide-react';
 import { IDELayout } from '@/components/editor';
 import { CollaborativeEditor } from '@/components/editor/CollaborativeEditor';
@@ -18,7 +19,6 @@ import { AuthForm } from '@/components/auth/AuthForm';
 import { ProjectList } from '@/components/projects/ProjectList';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useProjects } from '@/hooks/useProjects';
 import { cn } from '@/lib/utils';
 
 const features = [
@@ -206,30 +206,128 @@ const LandingPage: React.FC<{ onEnterEditor: () => void; onSignIn: () => void }>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="relative z-10 max-w-6xl mx-auto px-6 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Everything you need to <span className="gradient-text">code together</span>
+      {/* Precision Engineering Features */}
+      <section id="features" className="relative z-10 max-w-6xl mx-auto px-6 py-32">
+        <div className="text-center mb-20">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-foreground tracking-tight">
+            Precision Engineering
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Built with modern technologies for the best collaborative coding experience.
+            Built for teams that demand zero friction and maximum throughput. Our infrastructure scales as fast as your ideas.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature) => (
-            <div 
-              key={feature.title}
-              className="p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-colors group"
-            >
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <feature.icon className="w-6 h-6 text-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Card 1: Real-time Sync Engine (Col Span 2) */}
+          <div className="md:col-span-2 relative overflow-hidden rounded-2xl bg-[#1e232d]/80 border border-white/5 p-8 flex flex-col group">
+            <div className="flex items-start justify-between z-10">
+              <div className="max-w-md">
+                <h3 className="text-2xl font-bold mb-3 text-white tracking-tight">Real-time Sync Engine</h3>
+                <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                  Our proprietary protocol ensures every keystroke is propagated globally in under 50ms. No conflicts, just seamless flow.
+                </p>
               </div>
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground">{feature.description}</p>
+              <div className="w-10 h-10 flex items-center justify-center text-slate-600">
+                <Zap className="w-full h-full fill-slate-700/50" />
+              </div>
             </div>
-          ))}
+            
+            {/* Visual Decorative Element for Sync */}
+            <div className="mt-8 flex-1 relative rounded-xl overflow-hidden bg-black/40 min-h-[180px] border border-white/5">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#1e232d]/80 via-transparent to-[#1e232d]/80 z-10 pointer-events-none" />
+              {/* Circuit board lines simulation */}
+              <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[20%] w-64 h-64 bg-[#111318] rotate-45 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] rounded-sm">
+                 <div className="absolute inset-2 border border-white/5 rounded-sm" />
+                 <div className="absolute inset-4 border border-white/5 rounded-sm bg-[#1a1d24]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: AI Pair Programmer (Col Span 1) */}
+          <div className="col-span-1 rounded-2xl bg-[#1e232d]/80 border border-white/5 p-8 flex flex-col hover:bg-[#232936] transition-colors">
+            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center mb-6 text-purple-400">
+              <Bot className="w-5 h-5" />
+            </div>
+            <h3 className="text-xl font-bold mb-3 text-white tracking-tight mt-auto">AI Pair Programmer</h3>
+            <p className="text-sm text-slate-400 font-medium leading-relaxed">
+              Context-aware suggestions that understand your entire codebase, not just the file you're in.
+            </p>
+          </div>
+
+          {/* Card 3: Secure Rooms (Col Span 1) */}
+          <div className="col-span-1 rounded-2xl bg-[#1e232d]/80 border border-white/5 p-8 flex flex-col hover:bg-[#232936] transition-colors">
+            <div className="w-10 h-10 rounded-full bg-teal-500/10 flex items-center justify-center mb-6 text-teal-400">
+              <Lock className="w-5 h-5 fill-teal-500/20" />
+            </div>
+            <h3 className="text-xl font-bold mb-3 text-white tracking-tight mt-auto">Secure Rooms</h3>
+            <p className="text-sm text-slate-400 font-medium leading-relaxed">
+              E2E encryption for all collaborative sessions. Your source code remains yours alone.
+            </p>
+          </div>
+
+          {/* Card 4: Integrated Studio Chat (Col Span 2) */}
+          <div className="md:col-span-2 relative overflow-hidden rounded-2xl bg-[#1e232d]/80 border border-white/5 p-8 flex flex-col md:flex-row items-center gap-8 group">
+            {/* 3D Sphere Visual Placeholder */}
+            <div className="w-full md:w-[220px] h-[220px] shrink-0 relative flex items-center justify-center bg-black/40 rounded-xl border border-white/5 overflow-hidden">
+              <div className="absolute inset-0 bg-teal-500/5 saturate-150 blur-xl mix-blend-screen pointer-events-none" />
+              {/* Globe illusion */}
+              <div className="relative w-32 h-32">
+                <div className="absolute inset-0 rounded-full border border-teal-500/30 shadow-[0_0_40px_rgba(20,184,166,0.1)]" />
+                <div className="absolute inset-0 border border-teal-500/20 rounded-full rotate-45 scale-y-50 shadow-[0_0_20px_rgba(20,184,166,0.2)]" />
+                <div className="absolute inset-0 border border-teal-500/20 rounded-full -rotate-45 scale-y-50 shadow-[0_0_20px_rgba(20,184,166,0.2)]" />
+                <div className="absolute inset-0 border border-teal-500/20 rounded-full scale-x-50 shadow-[0_0_20px_rgba(20,184,166,0.2)]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-[1px] bg-teal-400/50 shadow-[0_0_10px_1px_rgba(45,212,191,0.5)]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-32 bg-teal-400/50 shadow-[0_0_10px_1px_rgba(45,212,191,0.5)]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full shadow-[0_0_15px_5px_rgba(255,255,255,0.8)]" />
+              </div>
+              <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path d="M0 100 L100 0 M0 0 L100 100" stroke="teal" strokeWidth="0.5" />
+              </svg>
+            </div>
+            <div className="w-full flex-1 flex flex-col justify-center">
+              <h3 className="text-2xl font-bold mb-3 text-white tracking-tight">Integrated Studio Chat</h3>
+              <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                Don't switch tabs. Discuss logic, share snippets, and review PRs directly within the environment.
+              </p>
+            </div>
+          </div>
+
+        </div>
+        
+        {/* Testimonials */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-16 pt-12 border-t border-white/5 relative">
+          
+          {/* Decorative quotes graphic left */}
+          <div className="absolute left-0 top-8 text-6xl text-slate-800/30 font-serif leading-none select-none -translate-x-4">"</div>
+          
+          <div className="rounded-2xl bg-[#1e232d]/40 border border-white/5 p-8 relative flex flex-col">
+            <p className="text-[15px] italic text-slate-300 mb-8 leading-relaxed flex-1">
+              "CodeCollab has completely transformed our remote pair programming sessions. The latency is practically invisible."
+            </p>
+            <div className="flex items-center gap-4 mt-auto">
+              <img src="https://i.pravatar.cc/100?img=47" alt="Sarah Chen" className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 shadow-sm" />
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-white leading-tight">Sarah Chen</span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-0.5">Senior Dev, Vercel</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#1e232d]/40 border border-white/5 p-8 relative flex flex-col">
+            <p className="text-[15px] italic text-slate-300 mb-8 leading-relaxed flex-1">
+              "The UI is a work of art. It's the first collaborative tool that actually feels like it was built for professional developers."
+            </p>
+            <div className="flex items-center gap-4 mt-auto">
+              <img src="https://i.pravatar.cc/100?img=11" alt="Marcus Thorne" className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 shadow-sm" />
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-white leading-tight">Marcus Thorne</span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mt-0.5">Lead Architect, Linear</span>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -266,13 +364,20 @@ const LandingPage: React.FC<{ onEnterEditor: () => void; onSignIn: () => void }>
 };
 
 type View = 'landing' | 'auth' | 'projects' | 'editor' | 'demo';
+type SelectedProject = {
+  id: string;
+  name: string;
+  ownerId: string;
+  role: string | null;
+};
 
 const Index = () => {
   const { user, loading } = useAuth();
-  const { projects } = useProjects();
   const [view, setView] = useState<View>('landing');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedProjectName, setSelectedProjectName] = useState<string>('');
+  const [selectedProjectOwnerId, setSelectedProjectOwnerId] = useState<string | null>(null);
+  const [selectedProjectRole, setSelectedProjectRole] = useState<string | null>(null);
 
   // Redirect to projects if user is logged in
   useEffect(() => {
@@ -281,10 +386,11 @@ const Index = () => {
     }
   }, [user, loading, view]);
 
-  const handleSelectProject = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    setSelectedProjectId(projectId);
-    setSelectedProjectName(project?.name || 'Untitled Project');
+  const handleSelectProject = (project: SelectedProject) => {
+    setSelectedProjectId(project.id);
+    setSelectedProjectName(project.name || 'Untitled Project');
+    setSelectedProjectOwnerId(project.ownerId);
+    setSelectedProjectRole(project.role);
     setView('editor');
   };
 
@@ -318,8 +424,12 @@ const Index = () => {
       <CollaborativeEditor
         projectId={selectedProjectId}
         projectName={selectedProjectName}
+        projectOwnerId={selectedProjectOwnerId || ''}
+        projectRole={selectedProjectRole}
         onBack={() => {
           setSelectedProjectId(null);
+          setSelectedProjectOwnerId(null);
+          setSelectedProjectRole(null);
           setView('projects');
         }}
       />

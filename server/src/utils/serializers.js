@@ -1,6 +1,13 @@
 const toId = (value) => {
   if (!value) return "";
   if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    if (typeof value.toHexString === "function") {
+      return value.toHexString();
+    }
+    if ("_id" in value && value._id !== value) return toId(value._id);
+    if ("id" in value && value.id !== value) return toId(value.id);
+  }
   if (value.toString) return value.toString();
   return String(value);
 };
@@ -23,6 +30,7 @@ export const serializeProject = (project) => ({
   name: project.name,
   description: project.description || null,
   owner_id: toId(project.owner),
+  current_role: project.currentRole || null,
   created_at: new Date(project.createdAt).toISOString(),
   updated_at: new Date(project.updatedAt).toISOString(),
 });
@@ -43,17 +51,48 @@ export const serializeCollaborator = (collaborator) => {
   };
 };
 
-export const serializeFile = (file) => ({
-  id: toId(file._id),
-  project_id: toId(file.project),
-  name: file.name,
-  path: file.path,
-  type: file.type,
-  content: file.content || null,
-  language: file.language || null,
-  parent_path: file.parentPath || null,
-  created_at: new Date(file.createdAt).toISOString(),
-  updated_at: new Date(file.updatedAt).toISOString(),
+export const serializeFile = (file) => {
+  const lockExpiresAt = file.lockExpiresAt ? new Date(file.lockExpiresAt) : null;
+  const hasActiveLock =
+    Boolean(file.lockOwner) && lockExpiresAt instanceof Date && !Number.isNaN(lockExpiresAt.getTime()) && lockExpiresAt.getTime() > Date.now();
+
+  return {
+    id: toId(file._id),
+    project_id: toId(file.project),
+    name: file.name,
+    path: file.path,
+    type: file.type,
+    content: file.content || null,
+    language: file.language || null,
+    revision: Number(file.revision || 0),
+    parent_path: file.parentPath || null,
+    locked: hasActiveLock,
+    lock: hasActiveLock
+      ? {
+          user_id: toId(file.lockOwner),
+          user_name: file.lockOwnerName || null,
+          expires_at: lockExpiresAt.toISOString(),
+        }
+      : null,
+    last_updated: new Date(file.updatedAt).toISOString(),
+    created_at: new Date(file.createdAt).toISOString(),
+    updated_at: new Date(file.updatedAt).toISOString(),
+  };
+};
+
+export const serializeFileVersion = (version) => ({
+  id: toId(version._id),
+  file_id: toId(version.file),
+  project_id: toId(version.project),
+  revision: Number(version.revision || 0),
+  name: version.name,
+  path: version.path,
+  language: version.language || null,
+  content: version.content || "",
+  updated_by: toId(version.updatedBy),
+  updated_by_name: version.updatedByName || "Unknown",
+  source: version.source || "manual",
+  created_at: new Date(version.createdAt).toISOString(),
 });
 
 export const serializePresence = (presence, profile) => ({

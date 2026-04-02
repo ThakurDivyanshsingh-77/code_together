@@ -1,4 +1,10 @@
 // Editor Types
+export interface FileLock {
+  userId: string;
+  userName: string | null;
+  expiresAt: string;
+}
+
 export interface FileNode {
   id: string;
   name: string;
@@ -6,6 +12,11 @@ export interface FileNode {
   path: string;
   language?: string;
   content?: string;
+  revision?: number;
+  lock?: FileLock | null;
+  locked?: boolean;
+  updatedAt?: string;
+  createdAt?: string;
   children?: FileNode[];
   isOpen?: boolean;
 }
@@ -17,7 +28,23 @@ export interface EditorTab {
   path: string;
   language: string;
   content: string;
+  revision?: number;
   isDirty: boolean;
+}
+
+export interface FileVersion {
+  id: string;
+  file_id: string;
+  project_id: string;
+  revision: number;
+  name: string;
+  path: string;
+  language: string | null;
+  content: string;
+  updated_by: string;
+  updated_by_name: string;
+  source: 'manual' | 'autosave' | 'system';
+  created_at: string;
 }
 
 export interface User {

@@ -2,12 +2,15 @@ import React from 'react';
 import { TitleBar } from './TitleBar';
 import { ActivityBar } from './ActivityBar';
 import { FileTree } from './FileTree';
+import { SearchPanel } from './SearchPanel';
 import { EditorTabs } from './EditorTabs';
 import { MonacoEditor } from './MonacoEditor';
 import { ChatPanel } from './ChatPanel';
 import { AIAssistant } from './AIAssistant';
 import { TerminalPanel } from './TerminalPanel';
+import { BottomPanel } from './BottomPanel';
 import { StatusBar } from './StatusBar';
+import { SettingsPanel } from './SettingsPanel';
 import { useEditorStore } from '@/store/editorStore';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +22,7 @@ export const IDELayout: React.FC = () => {
     activeRightPanel,
     activeBottomPanel,
     setActiveBottomPanel,
+    setBottomPanelHeight,
     activeActivityBar,
     tabs,
     activeTabId
@@ -45,18 +49,7 @@ export const IDELayout: React.FC = () => {
           style={{ width: sidebarWidth }}
         >
           {activeActivityBar === 'files' && <FileTree className="flex-1" />}
-          {activeActivityBar === 'search' && (
-            <div className="flex-1 p-4">
-              <div className="panel-header mb-4">
-                <span>Search</span>
-              </div>
-              <input
-                type="text"
-                placeholder="Search files..."
-                className="w-full px-3 py-2 bg-input border border-border rounded text-sm outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          )}
+          {activeActivityBar === 'search' && <SearchPanel className="flex-1" />}
           {activeActivityBar === 'git' && (
             <div className="flex-1 p-4">
               <div className="panel-header mb-4">
@@ -73,14 +66,7 @@ export const IDELayout: React.FC = () => {
               <p className="text-sm text-muted-foreground">Browse extensions</p>
             </div>
           )}
-          {activeActivityBar === 'settings' && (
-            <div className="flex-1 p-4">
-              <div className="panel-header mb-4">
-                <span>Settings</span>
-              </div>
-              <p className="text-sm text-muted-foreground">Editor settings</p>
-            </div>
-          )}
+          {activeActivityBar === 'settings' && <SettingsPanel className="flex-1" />}
         </div>
 
         {/* Editor Area */}
@@ -93,17 +79,19 @@ export const IDELayout: React.FC = () => {
 
           {/* Bottom Panel (Terminal) */}
           {activeBottomPanel && (
-            <div 
-              className="border-t border-border shrink-0"
-              style={{ height: bottomPanelHeight }}
+            <BottomPanel
+              height={bottomPanelHeight}
+              onResize={setBottomPanelHeight}
             >
               <TerminalPanel 
                 className="h-full"
                 onClose={() => setActiveBottomPanel(null)}
                 codeToRun={currentCode}
                 language={currentLanguage}
+                filePath={activeTab?.path}
+                fileName={activeTab?.name}
               />
-            </div>
+            </BottomPanel>
           )}
         </div>
 

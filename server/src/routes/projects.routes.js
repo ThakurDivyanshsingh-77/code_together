@@ -30,10 +30,13 @@ const ensureProjectExistsAndAccess = async (userId, projectId) => {
 router.get("/", async (req, res) => {
   try {
     const collaboratorRows = await ProjectCollaborator.find({ user: req.auth.userId })
-      .select("project")
+      .select("project role")
       .lean();
 
     const collaboratorProjectIds = collaboratorRows.map((row) => row.project);
+    const collaboratorRoleMap = new Map(
+      collaboratorRows.map((row) => [row.project.toString(), row.role])
+    );
 
     const projects = await Project.find({
       $or: [{ owner: req.auth.userId }, { _id: { $in: collaboratorProjectIds } }],
@@ -41,7 +44,17 @@ router.get("/", async (req, res) => {
       .sort({ updatedAt: -1 })
       .lean();
 
-    return res.json(projects.map(serializeProject));
+    return res.json(
+      projects.map((project) =>
+        serializeProject({
+          ...project,
+          currentRole:
+            project.owner.toString() === req.auth.userId
+              ? "owner"
+              : collaboratorRoleMap.get(project._id.toString()) || null,
+        })
+      )
+    );
   } catch (error) {
     return res.status(500).json({ message: "Failed to load projects" });
   }
@@ -62,7 +75,7 @@ router.post("/", async (req, res) => {
       owner: req.auth.userId,
     });
 
-    return res.status(201).json(serializeProject(project));
+    return res.status(201).json(serializeProject({ ...project.toObject(), currentRole: "owner" }));
   } catch (error) {
     return res.status(500).json({ message: "Failed to create project" });
   }
@@ -100,7 +113,12 @@ router.patch("/:projectId", async (req, res) => {
 
     await project.save();
 
-    return res.json(serializeProject(project));
+    return res.json(
+      serializeProject({
+        ...project.toObject(),
+        currentRole: project.owner.toString() === req.auth.userId ? "owner" : null,
+      })
+    );
   } catch (error) {
     return res.status(500).json({ message: "Failed to update project" });
   }
