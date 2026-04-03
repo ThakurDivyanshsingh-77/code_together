@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:5000/api";
+  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "https://code-together-km28.onrender.com/api";
 
 const TOKEN_STORAGE_KEY = "codecollab_auth_token";
 
