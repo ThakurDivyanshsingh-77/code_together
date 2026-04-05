@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { useEditorStore } from '@/store/editorStore';
-import { Loader2, Code, Eye, Play, Terminal, Lock } from 'lucide-react';
+import { Loader2, Code, Eye, Play, Terminal, Lock, Columns, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { executeCode, isExecutableLanguage, getLanguageInfo, SupportedLanguage } from '@/lib/sandboxExecutor';
+import { RunButton } from './RunButton';
 
 interface CollaboratorCursor {
   userId: string;
@@ -47,6 +48,8 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     editorFontSize,
     editorWordWrap,
     editorMinimap,
+    htmlPreviewLayout,
+    setHtmlPreviewLayout,
   } = useEditorStore();
 
   const [isRunning, setIsRunning] = useState(false);
@@ -94,38 +97,32 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     }
   };
 
+  const { setTriggerRun } = useEditorStore();
+
   const handleRunCode = async () => {
-    if (!activeTab || isRunning) return;
+    if (!activeTab) return;
 
     const language = activeTab.language;
-    if (language === 'html') {
-      setActiveBottomPanel('terminal');
-      setQuickResult(null);
+    const isHtml = language.toLowerCase() === 'html' || language.toLowerCase() === 'css';
+    
+    if (isHtml) {
+      if (htmlPreviewLayout === 'editor') {
+        setHtmlPreviewLayout('split');
+      }
       return;
     }
 
-    if (!isExecutableLanguage(language)) return;
+    if (isRunning) return;
 
-    setIsRunning(true);
-    setQuickResult(null);
-
-    try {
-      const result = await executeCode(activeTab.content, language as SupportedLanguage);
-
-      setQuickResult({
-        output: result.output,
-        error: result.error,
-        success: result.success,
-      });
-    } catch (error) {
-      setQuickResult({
-        output: [],
-        error: error instanceof Error ? error.message : 'Execution failed',
-        success: false,
-      });
-    } finally {
-      setIsRunning(false);
+    if (!isExecutableLanguage(language)) {
+      setActiveBottomPanel('terminal');
+      return;
     }
+
+    // Trigger explicit execution natively bridging back up to Terminal UI socket array
+    setActiveBottomPanel('terminal');
+    setQuickResult(null);
+    setTriggerRun(Date.now());
   };
 
   const handleOpenTerminal = () => {
@@ -133,7 +130,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     setQuickResult(null);
   };
 
-  const isHtmlPreviewable = activeTab?.language === 'html';
+  const isHtmlPreviewable = activeTab?.language.toLowerCase() === 'html' || activeTab?.language.toLowerCase() === 'css';
   const isExecutable = activeTab && isExecutableLanguage(activeTab.language);
   const hasPrimaryRunAction = Boolean(activeTab && (isExecutable || isHtmlPreviewable));
 
@@ -178,43 +175,47 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
           </div>
         )}
 
-        {hasPrimaryRunAction && (
+        {isHtmlPreviewable && (
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-sm border border-border">
+            <button
+              onClick={() => setHtmlPreviewLayout('editor')}
+              className={cn(
+                'px-2.5 py-1 rounded-sm text-xs font-medium transition-colors flex items-center gap-1.5',
+                htmlPreviewLayout === 'editor' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+              )}
+              title="Editor Only"
+            >
+              <Code className="w-3.5 h-3.5" />
+              <span>Editor</span>
+            </button>
+            <button
+              onClick={() => setHtmlPreviewLayout('split')}
+              className={cn(
+                'px-2.5 py-1 rounded-sm text-xs font-medium transition-colors flex items-center gap-1.5',
+                htmlPreviewLayout === 'split' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+              )}
+              title="Split View"
+            >
+              <Columns className="w-3.5 h-3.5" />
+              <span>Split</span>
+            </button>
+            <button
+              onClick={() => setHtmlPreviewLayout('preview')}
+              className={cn(
+                'px-2.5 py-1 rounded-sm text-xs font-medium transition-colors flex items-center gap-1.5',
+                htmlPreviewLayout === 'preview' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+              )}
+              title="Preview Only"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Preview</span>
+            </button>
+          </div>
+        )}
+
+        {isExecutable && !isHtmlPreviewable && (
           <div className="flex items-center gap-2">
-            {(() => {
-              const langInfo = getLanguageInfo(activeTab.language);
-              return (
-                <button
-                  onClick={handleRunCode}
-                  disabled={isRunning}
-                  className={cn(
-                    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-xs font-medium border border-primary/50',
-                    'bg-primary/90 text-primary-foreground hover:bg-primary transition-colors',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
-                  )}
-                >
-                  {isRunning ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>{activeTab.language === 'python' ? 'Loading Python...' : 'Running...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      {isHtmlPreviewable ? (
-                        <>
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Preview HTML</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3.5 h-3.5" />
-                          <span>Run {langInfo.icon}</span>
-                        </>
-                      )}
-                    </>
-                  )}
-                </button>
-              );
-            })()}
+            <RunButton />
 
             <button
               onClick={handleOpenTerminal}

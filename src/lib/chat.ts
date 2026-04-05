@@ -9,6 +9,7 @@ export interface ChatMessageRow {
   created_at: string;
   user_name: string;
   user_color: number;
+  reactions?: Record<string, string[]>;
 }
 
 export interface ChatCurrentUser {
@@ -87,5 +88,6 @@ export const toChatMessage = (
     content: row.content,
     timestamp: new Date(row.created_at),
     type: row.type === "code" ? "code" : "text",
+    reactions: row.reactions || {},
   };
 };

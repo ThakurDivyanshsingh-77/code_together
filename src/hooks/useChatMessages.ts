@@ -80,5 +80,33 @@ export const useChatMessages = (projectId: string) => {
     [currentChatUser, projectId]
   );
 
-  return { messages, loading, sendMessage };
+  const toggleReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      if (!currentChatUser.id || !projectId) return;
+
+      try {
+        const response = await apiRequest<{ messageId: string; reactions: Record<string, string[]> }>(
+          `/projects/${projectId}/chat/${messageId}/reaction`,
+          {
+            method: "POST",
+            body: { emoji },
+          }
+        );
+
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === messageId) {
+              return { ...msg, reactions: response.reactions || {} };
+            }
+            return msg;
+          })
+        );
+      } catch (error) {
+        console.error("Failed to toggle reaction:", error);
+      }
+    },
+    [currentChatUser.id, projectId]
+  );
+
+  return { messages, loading, sendMessage, toggleReaction };
 };

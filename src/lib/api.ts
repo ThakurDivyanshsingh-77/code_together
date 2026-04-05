@@ -1,5 +1,10 @@
+const LOCAL_BACKEND = "http://localhost:5000/api";
+const DEPLOYED_BACKEND = "https://code-together-km28.onrender.com/api";
+
+// Auto-switch: uses local backend running `npm run dev`, otherwise deployed backend. Override with .env
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "https://code-together-km28.onrender.com/api";
+  import.meta.env.VITE_API_URL?.replace(/\/$/, "") ||
+  (import.meta.env.DEV ? LOCAL_BACKEND : DEPLOYED_BACKEND);
 
 const TOKEN_STORAGE_KEY = "codecollab_auth_token";
 
@@ -11,9 +16,9 @@ interface ApiRequestOptions {
 }
 
 export const authTokenStore = {
-  get: () => localStorage.getItem(TOKEN_STORAGE_KEY),
-  set: (token: string) => localStorage.setItem(TOKEN_STORAGE_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_STORAGE_KEY),
+  get: () => sessionStorage.getItem(TOKEN_STORAGE_KEY),
+  set: (token: string) => sessionStorage.setItem(TOKEN_STORAGE_KEY, token),
+  clear: () => sessionStorage.removeItem(TOKEN_STORAGE_KEY),
 };
 
 export const apiRequest = async <T>(

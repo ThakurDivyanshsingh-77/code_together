@@ -56,6 +56,12 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        "accent-secondary": {
+          DEFAULT: "hsl(var(--accent-secondary))",
+        },
+        "accent-tertiary": {
+          DEFAULT: "hsl(var(--accent-tertiary))",
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -127,7 +133,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Share Tech Mono", "system-ui", "sans-serif"],
+        heading: ["Orbitron", "Share Tech Mono", "monospace"],
         mono: ["JetBrains Mono", "Fira Code", "Consolas", "monospace"],
       },
       borderRadius: {
@@ -156,6 +163,10 @@ export default {
           "0%, 100%": { borderColor: "hsl(var(--primary))" },
           "50%": { borderColor: "transparent" },
         },
+        scanline: {
+          "0%": { transform: "translateY(-100%)" },
+          "100%": { transform: "translateY(100vh)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -163,11 +174,12 @@ export default {
         pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         blink: "blink 1s step-end infinite",
         "typing-cursor": "typing-cursor 1s step-end infinite",
+        scanline: "scanline 8s linear infinite",
       },
       boxShadow: {
-        glow: "0 0 20px hsl(var(--primary) / 0.3), 0 0 40px hsl(var(--primary) / 0.1)",
-        "glow-accent":
-          "0 0 20px hsl(var(--accent) / 0.3), 0 0 40px hsl(var(--accent) / 0.1)",
+        glow: "0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary) / 0.4)",
+        "glow-lg": "0 0 10px hsl(var(--primary)), 0 0 20px hsl(var(--primary) / 0.6), 0 0 40px hsl(var(--primary) / 0.3)",
+        "glow-accent": "0 0 5px hsl(var(--accent)), 0 0 10px hsl(var(--accent) / 0.4)",
         "inner-glow": "inset 0 0 20px hsl(var(--primary) / 0.1)",
       },
       backgroundImage: {

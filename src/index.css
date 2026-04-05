@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cascadia+Code:wght@400;600&family=Segoe+UI:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,99 +6,92 @@
 
 @layer base {
   :root {
-    --background: 0 0% 12%;
-    --foreground: 0 0% 83%;
+    --background: 240 20% 5%; /* #0a0a0f */
+    --foreground: 0 0% 88%; /* #e0e0e0 */
 
-    --card: 0 0% 15%;
-    --card-foreground: 0 0% 83%;
-    --popover: 0 0% 15%;
-    --popover-foreground: 0 0% 83%;
+    --card: 240 18% 9%; /* #12121a */
+    --card-foreground: 0 0% 88%;
+    --popover: 240 18% 9%;
+    --popover-foreground: 0 0% 88%;
 
-    --sidebar: 0 0% 15%;
-    --sidebar-foreground: 0 0% 78%;
-    --sidebar-hover: 0 0% 21%;
-    --sidebar-active: 203 100% 40%;
+    --sidebar: 240 18% 9%;
+    --sidebar-foreground: 0 0% 88%;
+    --sidebar-hover: 240 24% 15%;
+    --sidebar-active: 152 100% 50%;
 
-    --editor: 0 0% 12%;
-    --editor-foreground: 0 0% 83%;
-    --editor-line: 200 5% 17%;
-    --editor-selection: 207 100% 29%;
-    --editor-gutter: 0 0% 53%;
+    --editor: 240 20% 5%;
+    --editor-foreground: 0 0% 88%;
+    --editor-line: 240 24% 15%;
+    --editor-selection: 152 100% 50%;
+    --editor-gutter: 215 14% 46%;
 
-    --primary: 203 100% 40%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 152 100% 50%; /* #00ff88 */
+    --primary-foreground: 240 20% 5%;
 
-    --secondary: 0 0% 21%;
-    --secondary-foreground: 0 0% 83%;
+    --secondary: 300 100% 50%; /* #ff00ff */
+    --secondary-foreground: 240 20% 5%;
 
-    --muted: 0 0% 24%;
-    --muted-foreground: 0 0% 62%;
+    --muted: 240 24% 15%; /* #1c1c2e */
+    --muted-foreground: 215 14% 46%; /* #6b7280 */
 
-    --accent: 212 100% 61%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 152 100% 50%;
+    --accent-foreground: 240 20% 5%;
 
-    --destructive: 0 86% 63%;
+    --accent-secondary: 300 100% 50%;
+    --accent-tertiary: 190 100% 50%;
+
+    --destructive: 345 100% 60%; /* #ff3366 */
     --destructive-foreground: 0 0% 100%;
-    --success: 127 44% 58%;
-    --success-foreground: 0 0% 12%;
-    --warning: 42 100% 53%;
-    --warning-foreground: 0 0% 12%;
-    --info: 203 100% 40%;
-    --info-foreground: 0 0% 100%;
+    
+    --success: 152 100% 50%;
+    --success-foreground: 240 20% 5%;
+    --warning: 39 100% 50%;
+    --warning-foreground: 240 20% 5%;
+    --info: 190 100% 50%;
+    --info-foreground: 240 20% 5%;
 
-    --syntax-keyword: 207 61% 59%;
-    --syntax-string: 20 47% 64%;
-    --syntax-number: 95 33% 73%;
-    --syntax-function: 60 50% 76%;
-    --syntax-variable: 203 99% 80%;
-    --syntax-comment: 101 29% 47%;
-    --syntax-type: 168 53% 55%;
-    --syntax-operator: 0 0% 83%;
+    --syntax-keyword: 300 100% 50%;
+    --syntax-string: 152 100% 50%;
+    --syntax-number: 190 100% 50%;
+    --syntax-function: 152 100% 50%;
+    --syntax-variable: 0 0% 88%;
+    --syntax-comment: 215 14% 46%;
+    --syntax-type: 190 100% 50%;
+    --syntax-operator: 300 100% 50%;
 
-    --user-1: 203 100% 40%;
-    --user-2: 142 44% 58%;
-    --user-3: 286 51% 63%;
-    --user-4: 42 100% 53%;
-    --user-5: 0 86% 63%;
-    --user-6: 212 100% 61%;
+    --border: 240 16% 20%; /* #2a2a3a */
+    --input: 240 18% 9%; /* #12121a */
+    --ring: 152 100% 50%; /* #00ff88 */
+    --radius: 0px;
 
-    --git-added: 127 44% 58%;
-    --git-modified: 42 100% 53%;
-    --git-deleted: 0 86% 63%;
-    --git-untracked: 0 0% 62%;
+    --tab: 240 18% 9%;
+    --tab-active: 240 20% 5%;
+    --tab-border: 240 16% 20%;
+    --tab-foreground: 215 14% 46%;
+    --tab-active-foreground: 152 100% 50%;
 
-    --border: 0 0% 24%;
-    --input: 0 0% 20%;
-    --ring: 203 100% 40%;
-    --radius: 0.125rem;
+    --statusbar: 152 100% 50%;
+    --statusbar-foreground: 240 20% 5%;
 
-    --tab: 0 0% 18%;
-    --tab-active: 0 0% 12%;
-    --tab-border: 0 0% 24%;
-    --tab-foreground: 0 0% 66%;
-    --tab-active-foreground: 0 0% 90%;
+    --terminal: 240 20% 5%;
+    --terminal-foreground: 152 100% 50%;
 
-    --statusbar: 203 100% 40%;
-    --statusbar-foreground: 0 0% 100%;
+    --minimap: 240 20% 5%;
 
-    --terminal: 0 0% 7%;
-    --terminal-foreground: 0 0% 83%;
+    --scrollbar: 240 16% 20%;
+    --scrollbar-hover: 152 100% 50%;
 
-    --minimap: 0 0% 12%;
+    --user-1: 152 100% 50%;
+    --user-2: 300 100% 50%;
+    --user-3: 190 100% 50%;
+    --user-4: 345 100% 60%;
+    --user-5: 39 100% 50%;
+    --user-6: 250 100% 65%;
 
-    --scrollbar: 0 0% 38%;
-    --scrollbar-hover: 0 0% 48%;
-
-    --breadcrumb: 0 0% 60%;
-    --breadcrumb-foreground: 0 0% 78%;
-
-    --sidebar-background: 0 0% 15%;
-    --sidebar-primary: 203 100% 40%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 21%;
-    --sidebar-accent-foreground: 0 0% 83%;
-    --sidebar-border: 0 0% 24%;
-    --sidebar-ring: 203 100% 40%;
+    --git-added: 152 100% 50%;
+    --git-modified: 190 100% 50%;
+    --git-deleted: 345 100% 60%;
+    --git-untracked: 215 14% 46%;
   }
 }
 
@@ -108,7 +101,7 @@
   }
 
   html {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Share Tech Mono', monospace;
   }
 
   body {
@@ -126,7 +119,7 @@
   code,
   pre,
   .monaco-editor {
-    font-family: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace !important;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
   }
 
   ::-webkit-scrollbar {
@@ -393,5 +386,60 @@
   .focus-ring:focus-visible {
     --tw-ring-color: hsl(var(--primary));
     --tw-ring-offset-color: hsl(var(--background));
+  }
+
+  /* Heavy Glitch Text Effect */
+  .heavy-glitch {
+    position: relative;
+    color: white;
+    font-weight: 900;
+  }
+  .heavy-glitch::before,
+  .heavy-glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+  .heavy-glitch::before {
+    left: 3px;
+    text-shadow: -3px 0 hsl(var(--secondary));
+    animation: glitch-anim-1 2s infinite linear alternate-reverse;
+  }
+  .heavy-glitch::after {
+    left: -3px;
+    text-shadow: 3px 0 hsl(var(--accent-tertiary));
+    animation: glitch-anim-2 2.5s infinite linear alternate-reverse;
+  }
+
+  @keyframes glitch-anim-1 {
+    0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+    10% { clip-path: inset(10% 0 10% 0); transform: translate(2px, -1px); }
+    20% { clip-path: inset(80% 0 5% 0); transform: translate(-2px, 2px); }
+    30% { clip-path: inset(50% 0 30% 0); transform: translate(2px, -2px); }
+    40% { clip-path: inset(5% 0 80% 0); transform: translate(-2px, 1px); }
+    50% { clip-path: inset(15% 0 10% 0); transform: translate(2px, -1px); }
+    60% { clip-path: inset(90% 0 5% 0); transform: translate(-2px, 2px); }
+    70% { clip-path: inset(40% 0 30% 0); transform: translate(2px, -2px); }
+    80% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 1px); }
+    90% { clip-path: inset(35% 0 10% 0); transform: translate(2px, -1px); }
+    100% { clip-path: inset(70% 0 5% 0); transform: translate(-2px, 2px); }
+  }
+
+  @keyframes glitch-anim-2 {
+    0% { clip-path: inset(10% 0 60% 0); transform: translate(2px, 1px); }
+    10% { clip-path: inset(30% 0 20% 0); transform: translate(-2px, -1px); }
+    20% { clip-path: inset(70% 0 15% 0); transform: translate(2px, 2px); }
+    30% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, -2px); }
+    40% { clip-path: inset(20% 0 70% 0); transform: translate(2px, 1px); }
+    50% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, -1px); }
+    60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, 2px); }
+    70% { clip-path: inset(50% 0 40% 0); transform: translate(-2px, -2px); }
+    80% { clip-path: inset(5% 0 90% 0); transform: translate(2px, 1px); }
+    90% { clip-path: inset(25% 0 60% 0); transform: translate(-2px, -1px); }
+    100% { clip-path: inset(60% 0 25% 0); transform: translate(2px, 2px); }
   }
 }

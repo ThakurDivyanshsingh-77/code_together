@@ -54,109 +54,180 @@ const features = [
   },
 ];
 
-const LandingPage: React.FC<{ onEnterEditor: () => void; onSignIn: () => void }> = ({ onEnterEditor, onSignIn }) => {
+import { useNavigate } from 'react-router-dom';
+
+const Index = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const onSignIn = () => navigate(user ? '/dashboard' : '/login');
+  const onEnterEditor = () => navigate('/editor/demo');
+
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
-      {/* Animated background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-primary/5 to-transparent rounded-full" />
-      </div>
+    <div className="min-h-screen bg-[#060608] overflow-hidden text-foreground font-sans relative">
+      {/* Background Grid */}
+      <div className="absolute inset-0 bg-circuit opacity-30 pointer-events-none" />
+      <div className="absolute inset-0 scanlines pointer-events-none opacity-50" />
 
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-border/50">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">
-            <Code className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="text-xl font-bold gradient-text">CodeCollab</span>
+      <header className="relative z-10 flex items-center justify-between px-8 py-6">
+        <div className="flex items-center gap-2 font-mono text-primary font-bold text-xl tracking-tight">
+          <span className="text-primary">&gt;_</span>
+          <span>CODE_TOGETHER.</span>
         </div>
         
-        <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-          <a href="#" className="hover:text-foreground transition-colors">Pricing</a>
-          <a href="#" className="hover:text-foreground transition-colors">Docs</a>
+        <nav className="hidden md:flex items-center gap-8 font-mono text-sm text-muted-foreground select-none">
+          <a href="#features" className="hover:text-primary transition-colors">[FEATURES]</a>
+          <a href="#" className="hover:text-primary transition-colors">[PRICING]</a>
+          <a href="#" className="hover:text-primary transition-colors">[ABOUT]</a>
         </nav>
 
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onSignIn}>Sign In</Button>
-          <Button size="sm" onClick={onSignIn}>
-            Get Started
-          </Button>
+        <div className="flex items-center gap-6 font-mono text-sm">
+          <button onClick={onSignIn} className="hover:text-primary transition-colors text-muted-foreground font-semibold">
+            LOG_IN
+          </button>
+          <button 
+            onClick={onSignIn}
+            className="border border-primary text-primary px-4 py-1.5 uppercase hover:bg-primary/10 transition-colors shadow-glow"
+          >
+            INIT_SYSTEM
+          </button>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="relative z-10 max-w-6xl mx-auto px-6 pt-20 pb-32 text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary border border-border mb-8">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-sm">Now with AI-powered code assistance</span>
+      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-24 grid lg:grid-cols-2 gap-16 items-center">
+        
+        {/* Left Content */}
+        <div className="flex flex-col items-start gap-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 border border-primary/30 text-primary font-mono text-xs mb-4 shadow-inner-glow uppercase select-none">
+            SYSTEM_STATUS: ONLINE
+          </div>
+          
+          <h1 className="text-[5rem] md:text-[6.5rem] font-black font-heading uppercase tracking-tighter leading-[0.85] flex flex-col items-start">
+            <span className="heavy-glitch" data-text="CODE">CODE</span>
+            <span className="bg-gradient-to-r from-primary via-secondary to-accent-tertiary bg-clip-text text-transparent transform">
+              TOGETHER
+            </span>
+            <span className="text-accent-tertiary">IN REAL TIME</span>
+          </h1>
+
+          <div className="mt-8 font-mono text-muted-foreground leading-relax border-l-2 border-primary/50 pl-4 py-1 text-sm md:text-base max-w-lg">
+            <p><span className="text-primary">&gt;</span> Code Together brings your team together with powerful tools designed to streamline workflows, boost productivity, and drive results immediately.</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 mt-10 font-mono text-sm">
+            <button 
+              onClick={onSignIn}
+              className="border border-primary text-primary px-6 py-3 uppercase hover:bg-primary/10 transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(0,255,136,0.2)]"
+            >
+              START FREE TRIAL &rarr;
+            </button>
+            <button onClick={onEnterEditor} className="text-muted-foreground hover:text-white uppercase tracking-wider transition-colors">
+              WATCH DEMO
+            </button>
+          </div>
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-          <span className="gradient-text">Code Together</span>
-          <br />
-          <span className="text-foreground">in Real Time</span>
-        </h1>
+        {/* Right HUD Display Panel */}
+        <div className="relative w-full aspect-[5/4] flex items-center justify-center p-4">
+           {/* Outer HUD Frame */}
+           <div className="absolute inset-0 border-[0.5px] border-primary/20 bg-[#0a0a0f]/90 shadow-[0_0_50px_rgba(0,0,0,0.8)] cyber-chamfer overflow-hidden flex flex-col p-8">
+              
+              {/* Corner Accents */}
+              <div className="absolute top-0 left-0 w-12 h-12 border-t-2 border-l-2 border-primary/60" />
+              <div className="absolute bottom-0 right-0 w-12 h-12 border-b-2 border-r-2 border-primary/60" />
+              
+              {/* HUD Header */}
+              <div className="flex justify-end mb-10 relative">
+                <div className="text-[10px] font-mono text-primary/80 uppercase tracking-widest relative z-10 px-2 py-0.5 bg-primary/10 border border-primary/30">
+                  HUD_DISPLAY_V_0.9
+                </div>
+                {/* Horizontal & Vertical HUD traces */}
+                <div className="absolute -right-8 top-1/2 w-[150%] h-[1px] bg-primary/20 -translate-y-1/2 -z-0" />
+                <div className="absolute right-[120px] top-[-30px] w-[1px] h-[300px] bg-primary/20 -z-0" />
+              </div>
 
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-          A powerful collaborative code editor built for modern development teams. 
-          Edit code together, chat in real-time, and get AI assistance — all in one place.
-        </p>
+              {/* HUD Modules Grid */}
+              <div className="grid grid-cols-2 gap-6 flex-1 relative z-10">
+                {/* Module 1: CPU Box */}
+                <div className="flex flex-col items-center justify-center border border-primary/30 bg-[#12121a] relative cyber-chamfer-sm group transition-all">
+                  <div className="absolute -top-3 -left-3 w-4 h-4 border-t border-l border-primary/50" />
+                  <div className="absolute -bottom-3 -right-3 w-4 h-4 border-b border-r border-primary/50" />
+                  <Zap className="w-10 h-10 text-primary mb-2 opacity-80" />
+                  <div className="w-12 h-1 bg-primary/20 mt-2 mb-1 overflow-hidden relative rounded-full">
+                     <div className="absolute top-0 left-0 h-full bg-primary w-2/3 shadow-glow" />
+                  </div>
+                </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button 
-            size="lg" 
-            onClick={onSignIn}
-            className="gap-2 px-8 shadow-glow"
-          >
-            <Play className="w-4 h-4" />
-            Get Started Free
-          </Button>
-          <Button variant="outline" size="lg" onClick={onEnterEditor} className="gap-2">
-            <Code className="w-4 h-4" />
-            Try Demo
-          </Button>
+                {/* Module 2: CPU Load */}
+                <div className="flex flex-col items-center justify-center border border-secondary/30 bg-[#12121a] relative group">
+                   <div className="absolute top-2 left-2 w-2 h-2 bg-secondary/50" />
+                   <div className="absolute bottom-2 right-2 w-2 h-2 border border-secondary/50" />
+                   
+                   <div className="text-4xl md:text-5xl font-bold text-secondary font-heading tracking-tighter shadow-secondary drop-shadow-[0_0_10px_rgba(255,0,255,0.6)]">
+                     98%
+                   </div>
+                   <div className="text-[10px] font-mono text-secondary uppercase tracking-widest mt-1">
+                     CPU_LOAD
+                   </div>
+                </div>
+
+                {/* Module 3: Network (Spans 2 cols) */}
+                <div className="col-span-2 flex items-center justify-between p-5 border border-accent-tertiary/40 bg-[#12121a] relative mt-2 cyber-chamfer-sm">
+                  <div className="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-accent-tertiary" />
+                  <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-accent-tertiary" />
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 border border-accent-tertiary/50 bg-accent-tertiary/10">
+                      <div className="w-6 h-6 rounded-full border border-accent-tertiary flex items-center justify-center relative">
+                        <div className="w-4 h-[1px] bg-accent-tertiary absolute shadow-[0_0_5px_rgba(0,255,255,1)]" />
+                        <div className="h-4 w-[1px] bg-accent-tertiary absolute shadow-[0_0_5px_rgba(0,255,255,1)]" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col justify-center">
+                       <span className="text-[11px] font-mono text-accent-tertiary uppercase">Global_Sync</span>
+                       <span className="text-[9px] font-mono text-muted-foreground uppercase">Active_Nodes: 402</span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 mx-8 h-[1px] border-b border-dashed border-accent-tertiary/30 relative hidden sm:block">
+                     <div className="absolute top-0 left-0 w-[40px] h-full bg-accent-tertiary shadow-[0_0_8px_rgba(0,255,255,0.8)] skeleton" style={{ animation: 'scanline 2s linear infinite' }} />
+                  </div>
+
+                  <div className="text-[10px] font-mono text-primary flex items-center gap-2">
+                     <span className="w-2 h-2 bg-primary rounded-full animate-blink flex-shrink-0" />
+                     PING: 14MS
+                  </div>
+                </div>
+              </div>
+           </div>
         </div>
+      </main>
 
-        {/* Stats */}
-        <div className="flex items-center justify-center gap-12 mt-16 text-center">
-          {[
-            { value: '50K+', label: 'Developers' },
-            { value: '99.9%', label: 'Uptime' },
-            { value: '<50ms', label: 'Sync Latency' },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <div className="text-3xl font-bold text-primary">{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Editor Preview */}
+      {/* Editor Preview (Try Demo) */}
       <section className="relative z-10 max-w-6xl mx-auto px-6 pb-20">
         <div 
-          className="relative rounded-xl border border-border overflow-hidden shadow-2xl cursor-pointer group"
+          className="relative rounded-xl border border-primary/20 overflow-hidden shadow-[0_0_30px_rgba(0,255,136,0.1)] cursor-pointer group cyber-chamfer bg-[#12121a]"
           onClick={onEnterEditor}
         >
           {/* Mock editor preview */}
-          <div className="bg-sidebar h-10 flex items-center px-4 border-b border-border">
+          <div className="bg-[#0a0a0f] h-10 flex items-center px-4 border-b border-primary/20">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-destructive" />
-              <div className="w-3 h-3 rounded-full bg-warning" />
-              <div className="w-3 h-3 rounded-full bg-success" />
+              <div className="w-3 h-3 border border-destructive bg-destructive/20" />
+              <div className="w-3 h-3 border border-warning bg-warning/20" />
+              <div className="w-3 h-3 border border-success bg-success/20" />
             </div>
-            <div className="flex-1 text-center text-sm text-muted-foreground">
-              collaborative-editor — CodeCollab
+            <div className="flex-1 text-center text-xs font-mono text-muted-foreground uppercase">
+              collaborative-editor_v2.0 — CodeTogether
             </div>
           </div>
           
-          <div className="bg-editor p-8 font-mono text-sm leading-relaxed h-80 overflow-hidden">
-            <div className="flex gap-8">
+          <div className="p-8 font-mono text-sm leading-relaxed h-80 overflow-hidden relative">
+            <div className="absolute inset-0 bg-circuit opacity-10 pointer-events-none" />
+            <div className="flex gap-8 relative z-10">
               {/* Line numbers */}
-              <div className="text-editor-gutter text-right select-none">
+              <div className="text-primary/30 text-right select-none">
                 {Array.from({ length: 20 }, (_, i) => (
                   <div key={i}>{i + 1}</div>
                 ))}
@@ -164,52 +235,47 @@ const LandingPage: React.FC<{ onEnterEditor: () => void; onSignIn: () => void }>
               
               {/* Code */}
               <div className="flex-1">
-                <div><span className="syntax-keyword">import</span> <span className="syntax-variable">React</span> <span className="syntax-keyword">from</span> <span className="syntax-string">'react'</span>;</div>
-                <div><span className="syntax-keyword">import</span> {'{'} <span className="syntax-variable">useState</span>, <span className="syntax-variable">useEffect</span> {'}'} <span className="syntax-keyword">from</span> <span className="syntax-string">'react'</span>;</div>
+                <div><span className="text-secondary">import</span> <span className="text-foreground">React</span> <span className="text-secondary">from</span> <span className="text-accent-tertiary">'react'</span>;</div>
+                <div><span className="text-secondary">import</span> {'{'} <span className="text-foreground">useState</span>, <span className="text-foreground">useEffect</span> {'}'} <span className="text-secondary">from</span> <span className="text-accent-tertiary">'react'</span>;</div>
                 <div></div>
-                <div><span className="syntax-keyword">interface</span> <span className="syntax-type">CollaboratorProps</span> {'{'}</div>
-                <div>  <span className="syntax-variable">name</span>: <span className="syntax-type">string</span>;</div>
-                <div>  <span className="syntax-variable">cursor</span>: {'{'} <span className="syntax-variable">line</span>: <span className="syntax-type">number</span>; <span className="syntax-variable">col</span>: <span className="syntax-type">number</span> {'}'};</div>
+                <div><span className="text-secondary">interface</span> <span className="text-accent-tertiary">CollaboratorProps</span> {'{'}</div>
+                <div>  <span className="text-foreground">name</span>: <span className="text-accent-tertiary">string</span>;</div>
+                <div>  <span className="text-foreground">cursor</span>: {'{'} <span className="text-foreground">line</span>: <span className="text-accent-tertiary">number</span>; <span className="text-foreground">col</span>: <span className="text-accent-tertiary">number</span> {'}'};</div>
                 <div>{'}'}</div>
                 <div></div>
-                <div><span className="syntax-keyword">export const</span> <span className="syntax-function">Collaborator</span> = ({'{'} <span className="syntax-variable">name</span>, <span className="syntax-variable">cursor</span> {'}'}) {'=> {'}</div>
-                <div>  <span className="syntax-keyword">const</span> [<span className="syntax-variable">isActive</span>, <span className="syntax-function">setIsActive</span>] = <span className="syntax-function">useState</span>(<span className="syntax-keyword">true</span>);</div>
+                <div><span className="text-secondary">export const</span> <span className="text-primary">Collaborator</span> = ({'{'} <span className="text-foreground">name</span>, <span className="text-foreground">cursor</span> {'}'}) {'=> {'}</div>
+                <div>  <span className="text-secondary">const</span> [<span className="text-foreground">isActive</span>, <span className="text-primary">setIsActive</span>] = <span className="text-primary">useState</span>(<span className="text-secondary">true</span>);</div>
                 <div></div>
-                <div>  <span className="syntax-function">useEffect</span>(() {'=> {'}</div>
-                <div>    <span className="syntax-comment">// Track collaborator activity</span></div>
-                <div>    <span className="syntax-keyword">const</span> <span className="syntax-variable">timer</span> = <span className="syntax-function">setInterval</span>(() {'=> {'}</div>
-                <div>      <span className="syntax-function">setIsActive</span>(<span className="syntax-variable">prev</span> {'=> !'}<span className="syntax-variable">prev</span>);</div>
-                <div>    {'}'}, <span className="syntax-number">3000</span>);</div>
+                <div>  <span className="text-primary">useEffect</span>(() {'=> {'}</div>
+                <div>    <span className="text-muted-foreground text-xs uppercase">// Track connection pulse</span></div>
+                <div>    <span className="text-secondary">const</span> <span className="text-foreground">timer</span> = <span className="text-primary">setInterval</span>(() {'=> {'}</div>
+                <div>      <span className="text-primary">setIsActive</span>(<span className="text-foreground">prev</span> {'=> !'}<span className="text-foreground">prev</span>);</div>
+                <div>    {'}'}, <span className="text-accent-tertiary">3000</span>);</div>
               </div>
             </div>
             
             {/* Simulated cursor */}
-            <div 
-              className="absolute top-[200px] left-[380px] cursor-label"
-              style={{ backgroundColor: 'hsl(var(--user-2))' }}
-            >
-              Alice
+            <div className="absolute top-[180px] left-[380px] z-20">
+               <div className="px-1.5 py-0.5 text-[10px] font-mono font-medium whitespace-nowrap bg-secondary text-secondary-foreground border border-secondary shadow-[0_0_10px_rgba(255,0,255,0.5)]">
+                 Alice_Node
+               </div>
+               <div className="w-0.5 h-5 bg-secondary animate-blink shadow-[0_0_8px_rgba(255,0,255,0.8)] mt-1" />
             </div>
-            <div 
-              className="absolute top-[200px] left-[380px] w-0.5 h-5 animate-blink"
-              style={{ backgroundColor: 'hsl(var(--user-2))' }}
-            />
           </div>
 
           {/* Hover overlay */}
-          <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <div className="bg-card px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm z-30">
+            <div className="border border-primary px-8 py-4 bg-primary/10 flex items-center gap-3">
               <Play className="w-5 h-5 text-primary" />
-              <span className="font-medium">Try Demo</span>
+              <span className="font-mono font-bold text-primary tracking-widest uppercase">INIT_DEMO_ENV</span>
             </div>
           </div>
         </div>
       </section>
-
       {/* Precision Engineering Features */}
-      <section id="features" className="relative z-10 max-w-6xl mx-auto px-6 py-32">
+      <section id="features" className="relative z-10 max-w-6xl mx-auto px-6 py-32 bg-circuit my-16 border-y border-border/50">
         <div className="text-center mb-20">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-foreground tracking-tight">
+          <h2 className="text-4xl md:text-5xl font-bold font-heading uppercase mb-6 text-foreground tracking-widest">
             Precision Engineering
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -338,10 +404,10 @@ const LandingPage: React.FC<{ onEnterEditor: () => void; onSignIn: () => void }>
           <p className="text-muted-foreground mb-8">
             Start coding with your team in real-time. No setup required.
           </p>
-          <Button size="lg" onClick={onSignIn} className="gap-2 shadow-glow">
+          <button onClick={onSignIn} className="border border-primary text-primary px-8 py-3 uppercase hover:bg-primary/10 transition-colors flex items-center gap-2 mx-auto shadow-[0_0_15px_rgba(0,255,136,0.2)]">
             Get Started Free
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </button>
         </div>
       </section>
 
@@ -350,7 +416,7 @@ const LandingPage: React.FC<{ onEnterEditor: () => void; onSignIn: () => void }>
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Code className="w-4 h-4" />
-            <span>CodeCollab — Built for developers who love to collaborate</span>
+            <span>Code_Together — Built for elite developers</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
@@ -360,88 +426,6 @@ const LandingPage: React.FC<{ onEnterEditor: () => void; onSignIn: () => void }>
         </div>
       </footer>
     </div>
-  );
-};
-
-type View = 'landing' | 'auth' | 'projects' | 'editor' | 'demo';
-type SelectedProject = {
-  id: string;
-  name: string;
-  ownerId: string;
-  role: string | null;
-};
-
-const Index = () => {
-  const { user, loading } = useAuth();
-  const [view, setView] = useState<View>('landing');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [selectedProjectName, setSelectedProjectName] = useState<string>('');
-  const [selectedProjectOwnerId, setSelectedProjectOwnerId] = useState<string | null>(null);
-  const [selectedProjectRole, setSelectedProjectRole] = useState<string | null>(null);
-
-  // Redirect to projects if user is logged in
-  useEffect(() => {
-    if (!loading && user && view === 'landing') {
-      setView('projects');
-    }
-  }, [user, loading, view]);
-
-  const handleSelectProject = (project: SelectedProject) => {
-    setSelectedProjectId(project.id);
-    setSelectedProjectName(project.name || 'Untitled Project');
-    setSelectedProjectOwnerId(project.ownerId);
-    setSelectedProjectRole(project.role);
-    setView('editor');
-  };
-
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Demo mode (no auth)
-  if (view === 'demo') {
-    return <IDELayout />;
-  }
-
-  // Auth flow
-  if (view === 'auth' && !user) {
-    return <AuthForm onSuccess={() => setView('projects')} />;
-  }
-
-  // Project list (authenticated)
-  if (view === 'projects' && user) {
-    return <ProjectList onSelectProject={handleSelectProject} />;
-  }
-
-  // Collaborative editor (authenticated with project selected)
-  if (view === 'editor' && user && selectedProjectId) {
-    return (
-      <CollaborativeEditor
-        projectId={selectedProjectId}
-        projectName={selectedProjectName}
-        projectOwnerId={selectedProjectOwnerId || ''}
-        projectRole={selectedProjectRole}
-        onBack={() => {
-          setSelectedProjectId(null);
-          setSelectedProjectOwnerId(null);
-          setSelectedProjectRole(null);
-          setView('projects');
-        }}
-      />
-    );
-  }
-
-  // Landing page
-  return (
-    <LandingPage 
-      onEnterEditor={() => setView('demo')} 
-      onSignIn={() => setView(user ? 'projects' : 'auth')}
-    />
   );
 };
 

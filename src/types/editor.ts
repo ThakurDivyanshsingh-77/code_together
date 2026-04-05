@@ -71,6 +71,7 @@ export interface ChatMessage {
   content: string;
   timestamp: Date;
   type: 'text' | 'code';
+  reactions?: Record<string, string[]>;
 }
 
 export interface Project {
@@ -90,9 +91,9 @@ export interface Terminal {
 }
 
 export interface TerminalLine {
-  type: 'prompt' | 'output' | 'error';
+  type: 'prompt' | 'output' | 'error' | 'system' | 'info' | 'success';
   content: string;
-  timestamp: Date;
+  timestamp?: Date;
 }
 
 export interface AIMessage {

@@ -122,4 +122,5 @@ export const serializeChatMessage = (message, profile) => ({
   created_at: new Date(message.createdAt).toISOString(),
   user_name: profile?.displayName || "Unknown",
   user_color: profile?.color || 1,
+  reactions: message.reactions ? Object.fromEntries(message.reactions) : {},
 });

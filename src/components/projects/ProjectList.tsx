@@ -34,10 +34,13 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from '@/lib/time';
 
 interface ProjectListProps {
-  onSelectProject: (project: { id: string; name: string; ownerId: string; role: string | null }) => void;
+  onSelectProject?: (project: { id: string; name: string; ownerId: string; role: string | null }) => void;
 }
 
+import { useNavigate } from 'react-router-dom';
+
 export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => {
+  const navigate = useNavigate();
   const { projects, loading, createProject, updateProject, deleteProject } = useProjects();
   const { user, profile, signOut } = useAuth();
   const [newProjectName, setNewProjectName] = useState('');
@@ -94,12 +97,18 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
     setDialogOpen(false);
     
     if (data) {
-      onSelectProject({
+      const projectPayload = {
         id: data.id,
         name: data.name,
         ownerId: data.owner_id,
         role: data.current_role,
-      });
+      };
+      if (onSelectProject) onSelectProject(projectPayload);
+      navigate(`/editor/${data.id}`, { state: {
+        projectName: data.name,
+        projectOwnerId: data.owner_id,
+        projectRole: data.current_role
+      }});
     }
   };
 
@@ -224,14 +233,21 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
             {projects.map((project) => (
               <div
                 key={project.id}
-                onClick={() =>
-                  onSelectProject({
-                    id: project.id,
-                    name: project.name,
-                    ownerId: project.owner_id,
-                    role: project.current_role,
-                  })
-                }
+                onClick={() => {
+                  if (onSelectProject) {
+                    onSelectProject({
+                      id: project.id,
+                      name: project.name,
+                      ownerId: project.owner_id,
+                      role: project.current_role,
+                    });
+                  }
+                  navigate(`/editor/${project.id}`, { state: {
+                    projectName: project.name,
+                    projectOwnerId: project.owner_id,
+                    projectRole: project.current_role
+                  }});
+                }}
                 className="group p-6 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer transition-all"
               >
                 <div className="flex items-start justify-between">

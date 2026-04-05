@@ -382,6 +382,9 @@ interface EditorState {
   activeBottomPanel: 'terminal' | 'output' | null;
   activeActivityBar: 'files' | 'search' | 'git' | 'extensions' | 'settings';
   
+  // HTML Preview
+  htmlPreviewLayout: 'editor' | 'split' | 'preview';
+  
   // Extensions
   installedExtensions: string[];
   
@@ -403,6 +406,7 @@ interface EditorState {
   setActiveRightPanel: (panel: 'chat' | 'ai' | null) => void;
   setActiveBottomPanel: (panel: 'terminal' | 'output' | null) => void;
   setActiveActivityBar: (activity: 'files' | 'search' | 'git' | 'extensions' | 'settings') => void;
+  setHtmlPreviewLayout: (layout: 'editor' | 'split' | 'preview') => void;
   setEditorFontSize: (size: number) => void;
   setEditorWordWrap: (wrap: 'on' | 'off') => void;
   setEditorMinimap: (enabled: boolean) => void;
@@ -415,6 +419,11 @@ interface EditorState {
   setFilesFromDb: (files: FileNode[]) => void;
   setCurrentUser: (user: User) => void;
   setCollaborators: (collaborators: User[]) => void;
+  triggerRun: number;
+  setTriggerRun: (timestamp: number) => void;
+  isTerminalRunning: boolean;
+  setIsTerminalRunning: (isRunning: boolean) => void;
+  getAllFiles: () => FlatFileNode[];
 }
 
 // Helper function to find file by ID
@@ -603,8 +612,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeBottomPanel: null,
   activeActivityBar: 'files',
   installedExtensions: ['vscode-icons'],
+  triggerRun: 0,
+  isTerminalRunning: false,
+  htmlPreviewLayout: 'editor',
 
   // Actions
+  getAllFiles: () => flattenFilesWithParents(get().files),
+  setHtmlPreviewLayout: (layout) => set({ htmlPreviewLayout: layout }),
+  setTriggerRun: (timestamp) => set({ triggerRun: timestamp }),
+  setIsTerminalRunning: (isRunning) => set({ isTerminalRunning: isRunning }),
   openFile: (fileId: string) => {
     const state = get();
     const file = findFileById(state.files, fileId);

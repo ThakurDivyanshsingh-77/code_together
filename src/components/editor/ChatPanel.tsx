@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MoreVertical, Loader2 } from 'lucide-react';
+import { Send, MoreVertical, Loader2, SmilePlus } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useEditorStore } from '@/store/editorStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useChatMessages } from '@/hooks/useChatMessages';
@@ -15,7 +16,7 @@ interface ChatPanelProps {
 export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) => {
   const { currentUser, collaborators } = useEditorStore();
   const { user, profile } = useAuth();
-  const { messages, loading, sendMessage } = useChatMessages(projectId || '');
+  const { messages, loading, sendMessage, toggleReaction } = useChatMessages(projectId || "");
   const storeMessages = useEditorStore(s => s.messages);
   const storeSend = useEditorStore(s => s.sendMessage);
 
@@ -109,11 +110,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
         ) : (
           displayMessages.map((message) => {
             const isOwn = isOwnChatMessage(message.userId, currentUserId);
+            const processedContent = message.content.replace(/@([A-Za-z0-9_]+)/g, '**@$1**');
+
             return (
               <div
                 key={message.id}
                 className={cn(
-                  "flex flex-col gap-1",
+                  "flex flex-col gap-1 group relative",
                   isOwn && "items-end"
                 )}
               >
@@ -126,10 +129,81 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
                     <span>{message.userName}</span>
                   </div>
                 )}
-                <div className={cn("chat-message", isOwn ? "own" : "other")}>
-                  {message.content}
+                
+                <div className="relative">
+                  <div className={cn(
+                    "chat-message p-2 rounded-md text-sm shadow-sm relative z-10 max-w-full overflow-hidden break-words prose prose-sm prose-invert", 
+                    isOwn ? "bg-primary/20 border border-primary/30 text-primary-foreground own" : "bg-secondary/50 border border-border text-foreground other",
+                  )}>
+                    <ReactMarkdown
+                      components={{
+                        code({ node, children, ...props }: any) {
+                          const isBlock = String(children).includes('\n');
+                          return isBlock ? (
+                            <pre className="bg-black/60 p-2 rounded-md overflow-x-auto my-2 border border-primary/20 text-[11px] font-mono">
+                              <code className="text-muted-foreground">{children}</code>
+                            </pre>
+                          ) : (
+                            <code className="bg-black/40 rounded px-1 py-0.5 text-primary text-[11px] font-mono" {...props}>{children}</code>
+                          );
+                        },
+                        strong({ node, children, ...props }: any) {
+                          const text = Array.isArray(children) ? children.join('') : String(children ?? '');
+                          if (text.startsWith('@')) {
+                            return <strong className="text-primary font-bold bg-primary/10 px-1 rounded-sm border border-primary/20" {...props}>{children}</strong>;
+                          }
+                          return <strong className="font-bold text-foreground" {...props}>{children}</strong>;
+                        },
+                        p({ children, ...props }: any) {
+                          return <div className="m-0 break-words flex flex-col gap-2" {...props}>{children}</div>;
+                        }
+                      }}
+                    >
+                      {processedContent}
+                    </ReactMarkdown>
+                  </div>
+                  
+                  {isPersisted && (
+                    <div className={cn(
+                      "absolute top-0 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-card border border-border rounded-full px-1 py-0.5 shadow-md z-20",
+                      isOwn ? "-left-16" : "-right-16"
+                    )}>
+                      {['👍', '❤️', '🔥'].map(emoji => (
+                         <button 
+                           key={emoji}
+                           onClick={() => toggleReaction && toggleReaction(message.id, emoji)}
+                           className="hover:scale-125 transition-transform text-xs"
+                         >
+                           {emoji}
+                         </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <span className="text-[10px] text-muted-foreground/80">
+
+                {message.reactions && Object.keys(message.reactions).length > 0 && (
+                  <div className={cn("flex flex-wrap gap-1 mt-0.5", isOwn ? "justify-end" : "justify-start")}>
+                    {Object.entries(message.reactions).map(([emoji, users]) => {
+                      if (!users || users.length === 0) return null;
+                      const hasReacted = users.includes(currentUserId);
+                      return (
+                        <button
+                          key={emoji}
+                          onClick={() => isPersisted && toggleReaction && toggleReaction(message.id, emoji)}
+                          className={cn(
+                            "flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border transition-colors",
+                            hasReacted ? "bg-primary/20 border-primary/50 text-primary-foreground" : "bg-secondary text-muted-foreground border-border hover:bg-secondary/80"
+                          )}
+                        >
+                          <span>{emoji}</span>
+                          <span className="font-medium">{users.length}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <span className="text-[10px] text-muted-foreground/80 py-1">
                   {formatDistanceToNow(message.timestamp, { addSuffix: true })}
                 </span>
               </div>

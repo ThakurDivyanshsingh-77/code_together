@@ -84,4 +84,53 @@ router.post("/:projectId/chat", async (req, res) => {
   }
 });
 
+router.post("/:projectId/chat/:messageId/reaction", async (req, res) => {
+  try {
+    const { projectId, messageId } = req.params;
+    const access = await ensureProjectAccess(req.auth.userId, projectId);
+
+    if (access.status !== 200) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
+    const emoji = String(req.body?.emoji || "").trim();
+    if (!emoji) {
+      return res.status(400).json({ message: "Emoji is required" });
+    }
+
+    const message = await ChatMessage.findOne({ _id: messageId, project: projectId });
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    if (!message.reactions) {
+      message.reactions = new Map();
+    }
+
+    const currentReactions = message.reactions.get(emoji) || [];
+    const userId = req.auth.userId;
+
+    if (currentReactions.includes(userId)) {
+      const updatedList = currentReactions.filter(id => id !== userId);
+      if (updatedList.length === 0) {
+        message.reactions.delete(emoji);
+      } else {
+        message.reactions.set(emoji, updatedList);
+      }
+    } else {
+      currentReactions.push(userId);
+      message.reactions.set(emoji, currentReactions);
+    }
+
+    await message.save();
+
+    return res.status(200).json({
+       messageId,
+       reactions: Object.fromEntries(message.reactions)
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to toggle reaction" });
+  }
+});
+
 export default router;

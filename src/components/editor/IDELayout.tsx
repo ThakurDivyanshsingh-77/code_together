@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TitleBar } from './TitleBar';
 import { ActivityBar } from './ActivityBar';
 import { FileTree } from './FileTree';
@@ -8,6 +8,7 @@ import { MonacoEditor } from './MonacoEditor';
 import { ChatPanel } from './ChatPanel';
 import { AIAssistant } from './AIAssistant';
 import { TerminalPanel } from './TerminalPanel';
+import { HTMLPreview } from './HTMLPreview';
 import { BottomPanel } from './BottomPanel';
 import { StatusBar } from './StatusBar';
 import { SettingsPanel } from './SettingsPanel';
@@ -15,7 +16,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { cn } from '@/lib/utils';
 
 export const IDELayout: React.FC = () => {
-  const { 
+  const {
     sidebarWidth,
     rightPanelWidth,
     bottomPanelHeight,
@@ -24,6 +25,8 @@ export const IDELayout: React.FC = () => {
     setActiveBottomPanel,
     setBottomPanelHeight,
     activeActivityBar,
+    htmlPreviewLayout,
+    setHtmlPreviewLayout,
     tabs,
     activeTabId
   } = useEditorStore();
@@ -32,6 +35,14 @@ export const IDELayout: React.FC = () => {
   const activeTab = tabs.find(t => t.id === activeTabId);
   const currentCode = activeTab?.content || '';
   const currentLanguage = activeTab?.language || 'plaintext';
+  const isHtmlFile = currentLanguage.toLowerCase() === 'html' || currentLanguage.toLowerCase() === 'css';
+
+  // Reset layout to editor-only when user navigates away from HTML/CSS files
+  useEffect(() => {
+    if (!isHtmlFile && htmlPreviewLayout !== 'editor') {
+      setHtmlPreviewLayout('editor');
+    }
+  }, [isHtmlFile]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -44,7 +55,7 @@ export const IDELayout: React.FC = () => {
         <ActivityBar />
 
         {/* Sidebar */}
-        <div 
+        <div
           className="flex flex-col bg-sidebar border-r border-border overflow-hidden"
           style={{ width: sidebarWidth }}
         >
@@ -71,28 +82,46 @@ export const IDELayout: React.FC = () => {
 
         {/* Editor Area */}
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Editor with tabs */}
-          <div className="flex flex-col flex-1 overflow-hidden">
-            <EditorTabs />
-            <MonacoEditor className="flex-1" />
+
+          {/* Split View: Editor | Preview */}
+          <div className="flex flex-1 overflow-hidden">
+
+            {/* Monaco Editor — shown in editor & split modes, always for non-html files */}
+            {(htmlPreviewLayout === 'editor' || htmlPreviewLayout === 'split' || !isHtmlFile) && (
+              <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+                <EditorTabs />
+                <MonacoEditor className="flex-1" />
+              </div>
+            )}
+
+            {/* HTML Preview — shown in split & preview modes, only for html/css files */}
+            {(htmlPreviewLayout === 'split' || htmlPreviewLayout === 'preview') && isHtmlFile && (
+              <div
+                className="flex flex-col min-w-0 overflow-hidden border-l border-border"
+                style={{ flex: htmlPreviewLayout === 'preview' ? '1 1 100%' : '1 1 50%' }}
+              >
+                <HTMLPreview code={currentCode} />
+              </div>
+            )}
+
           </div>
 
           {/* Bottom Panel (Terminal) */}
           {activeBottomPanel && (
-            <BottomPanel
-              height={bottomPanelHeight}
-              onResize={setBottomPanelHeight}
-            >
-              <TerminalPanel 
-                className="h-full"
-                onClose={() => setActiveBottomPanel(null)}
-                codeToRun={currentCode}
-                language={currentLanguage}
-                filePath={activeTab?.path}
-                fileName={activeTab?.name}
-              />
+            <BottomPanel height={bottomPanelHeight} onResize={setBottomPanelHeight}>
+              {activeBottomPanel === 'terminal' ? (
+                <TerminalPanel
+                  className="h-full"
+                  onClose={() => setActiveBottomPanel(null)}
+                  codeToRun={currentCode}
+                  language={currentLanguage}
+                  filePath={activeTab?.path}
+                  fileName={activeTab?.name}
+                />
+              ) : null}
             </BottomPanel>
           )}
+
         </div>
 
         {/* Right Panel (Chat / AI) */}

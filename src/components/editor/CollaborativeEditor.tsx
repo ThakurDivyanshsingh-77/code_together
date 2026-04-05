@@ -8,6 +8,7 @@ import { ChatPanel } from './ChatPanel';
 import { EditorTabs } from './EditorTabs';
 import { FileHistoryPanel } from './FileHistoryPanel';
 import { FileTree } from './FileTree';
+import { HTMLPreview } from './HTMLPreview';
 import { MonacoEditor } from './MonacoEditor';
 import { SearchPanel } from './SearchPanel';
 import { StatusBar } from './StatusBar';
@@ -24,12 +25,14 @@ import { FileNode } from '@/types/editor';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+
 interface CollaborativeEditorProps {
-  projectId: string;
-  projectName: string;
-  projectOwnerId: string;
-  projectRole: string | null;
-  onBack: () => void;
+  projectId?: string;
+  projectName?: string;
+  projectOwnerId?: string;
+  projectRole?: string | null;
+  onBack?: () => void;
 }
 
 const findFileNodeById = (nodes: FileNode[], fileId: string): FileNode | null => {
@@ -44,13 +47,21 @@ const findFileNodeById = (nodes: FileNode[], fileId: string): FileNode | null =>
   return null;
 };
 
-export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
-  projectId,
-  projectName,
-  projectOwnerId,
-  projectRole,
-  onBack,
-}) => {
+export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) => {
+  const { roomId } = useParams<{ roomId: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const projectId = props.projectId || roomId || '';
+  const projectName = props.projectName && props.projectName !== 'Loading...' 
+      ? props.projectName 
+      : location.state?.projectName || 'Collaborative Code Session';
+  const projectOwnerId = props.projectOwnerId || location.state?.projectOwnerId || '';
+  const projectRole = props.projectRole !== undefined && props.projectRole !== null
+      ? props.projectRole 
+      : location.state?.projectRole || null;
+  const onBack = props.onBack || (() => navigate('/dashboard'));
+
   const { user, profile } = useAuth();
   const {
     files: dbFiles,
@@ -76,6 +87,8 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
     setActiveBottomPanel,
     setBottomPanelHeight,
     activeActivityBar,
+    htmlPreviewLayout,
+    setHtmlPreviewLayout,
     tabs,
     activeTabId,
     setFilesFromDb,
@@ -104,6 +117,18 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
     () => (activeFileId ? findFileNodeById(files, activeFileId) : null),
     [files, activeFileId]
   );
+
+  // Derived values for HTML preview
+  const currentCode = activeTab?.content || '';
+  const currentLanguage = activeTab?.language || 'plaintext';
+  const isHtmlFile = currentLanguage.toLowerCase() === 'html' || currentLanguage.toLowerCase() === 'css';
+
+  // Reset preview layout when switching away from HTML/CSS files
+  useEffect(() => {
+    if (!isHtmlFile && htmlPreviewLayout !== 'editor') {
+      setHtmlPreviewLayout('editor');
+    }
+  }, [isHtmlFile]);
 
   const {
     participants,
@@ -152,8 +177,6 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
       ? `This file is locked by ${lockOwnerName}`
       : undefined;
 
-  const currentCode = activeTab?.content || '';
-  const currentLanguage = activeTab?.language || 'plaintext';
   const rightSidebarWidth = Math.max(280, Math.min(rightPanelWidth, 360));
 
   useEffect(() => {
@@ -380,27 +403,46 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 overflow-hidden">
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              <EditorTabs />
-              <MonacoEditor
-                className="flex-1"
-                onContentChange={handleContentChange}
-                readOnly={isReadOnly}
-                readOnlyReason={readOnlyReason}
-                onCursorChange={(line, column) => {
-                  updateCursor(line, column);
-                }}
-                collaboratorCursors={onlineUsers
-                  .filter((participant) => participant.user_id !== user?.id)
-                  .map((participant) => ({
-                    userId: participant.user_id,
-                    userName: participant.profile?.display_name || 'Unknown',
-                    color: participant.profile?.color || 1,
-                    line: participant.cursor_line || 1,
-                    column: participant.cursor_column || 1,
-                    filePath: participant.file_path || '',
-                  }))}
-              />
+
+            {/* Editor + Preview Split Container */}
+            <div className="flex min-w-0 flex-1 overflow-hidden">
+
+              {/* Monaco Editor — always shown unless Preview-only mode */}
+              {(htmlPreviewLayout === 'editor' || htmlPreviewLayout === 'split' || !isHtmlFile) && (
+                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                  <EditorTabs />
+                  <MonacoEditor
+                    className="flex-1"
+                    onContentChange={handleContentChange}
+                    readOnly={isReadOnly}
+                    readOnlyReason={readOnlyReason}
+                    onCursorChange={(line, column) => {
+                      updateCursor(line, column);
+                    }}
+                    collaboratorCursors={onlineUsers
+                      .filter((participant) => participant.user_id !== user?.id)
+                      .map((participant) => ({
+                        userId: participant.user_id,
+                        userName: participant.profile?.display_name || 'Unknown',
+                        color: participant.profile?.color || 1,
+                        line: participant.cursor_line || 1,
+                        column: participant.cursor_column || 1,
+                        filePath: participant.file_path || '',
+                      }))}
+                  />
+                </div>
+              )}
+
+              {/* HTML Preview — shown in split & preview modes for html/css files */}
+              {(htmlPreviewLayout === 'split' || htmlPreviewLayout === 'preview') && isHtmlFile && (
+                <div
+                  className="flex min-w-0 flex-col overflow-hidden border-l border-border"
+                  style={{ flex: htmlPreviewLayout === 'preview' ? '1 1 100%' : '1 1 50%' }}
+                >
+                  <HTMLPreview code={currentCode} />
+                </div>
+              )}
+
             </div>
 
             <div

@@ -6,11 +6,14 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
+import { useNavigate } from 'react-router-dom';
+
 interface AuthFormProps {
   onSuccess?: () => void;
 }
 
 export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,7 +30,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess }) => {
         const { error } = await signIn(email, password);
         if (error) throw error;
         toast.success('Welcome back!');
-        onSuccess?.();
+        if (onSuccess) onSuccess();
+        else navigate('/dashboard');
       } else {
         if (!displayName.trim()) {
           toast.error('Please enter a display name');
