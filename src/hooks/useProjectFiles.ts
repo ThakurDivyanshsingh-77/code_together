@@ -130,6 +130,7 @@ export const useProjectFiles = (projectId: string | null) => {
   const [files, setFiles] = useState<FileNode[]>([]);
   const [dbFiles, setDbFiles] = useState<DbFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [projectNotFound, setProjectNotFound] = useState(false);
 
   const fetchFiles = useCallback(
     async (silent: boolean = false) => {
@@ -137,11 +138,13 @@ export const useProjectFiles = (projectId: string | null) => {
         setFiles([]);
         setDbFiles([]);
         setLoading(false);
+        setProjectNotFound(false);
         return;
       }
 
       try {
         if (!silent) setLoading(true);
+        setProjectNotFound(false);
 
         const data = await apiRequest<DbFile[]>(`/projects/${projectId}/files`);
         const typedData = data || [];
@@ -151,6 +154,11 @@ export const useProjectFiles = (projectId: string | null) => {
       } catch (error) {
         if (!silent) {
           console.error("Error fetching files:", error);
+        }
+        // Check if it's a 404 error (project not found)
+        if (error instanceof Error && (error.message.includes('404') || error.message.includes('not found'))) {
+          console.log('Project not found detected for:', projectId);
+          setProjectNotFound(true);
         }
       } finally {
         if (!silent) setLoading(false);
@@ -382,9 +390,106 @@ export const useProjectFiles = (projectId: string | null) => {
     [files]
   );
 
+  // AI-specific file operations
+  const getFileContent = useCallback(
+    async (fileId: string): Promise<{ content: string; error: Error | null }> => {
+      if (!projectId) return { content: '', error: new Error("No project selected") };
+
+      try {
+        const file = await apiRequest<DbFile>(`/projects/${projectId}/files/${fileId}`);
+        return { content: file.content || '', error: null };
+      } catch (error) {
+        return { content: '', error: error as Error };
+      }
+    },
+    [projectId]
+  );
+
+  const updateFileByAI = useCallback(
+    async (fileId: string, content: string): Promise<{ error: Error | null }> => {
+      if (!projectId) return { error: new Error("No project selected") };
+
+      try {
+        const updated = await apiRequest<DbFile>(`/projects/${projectId}/files/${fileId}`, {
+          method: "PATCH",
+          body: { content },
+        });
+
+        setDbFiles((prev) => {
+          const nextFiles = upsertDbFile(prev, updated);
+          setFiles(buildFileTree(nextFiles));
+          return nextFiles;
+        });
+
+        return { error: null };
+      } catch (error) {
+        return { error: error as Error };
+      }
+    },
+    [projectId]
+  );
+
+  const createFileByAI = useCallback(
+    async (path: string, content: string, type: 'file' | 'folder' = 'file'): Promise<{ fileId: string; error: Error | null }> => {
+      if (!projectId) return { fileId: '', error: new Error("No project selected") };
+
+      const parentPath = getParentPath(path);
+      const name = path.split('/').pop() || '';
+      const language = type === 'file' ? getLanguageFromFileName(name) : null;
+
+      try {
+        const data = await apiRequest<DbFile>(`/projects/${projectId}/files`, {
+          method: "POST",
+          body: {
+            name,
+            path,
+            type,
+            content: type === 'file' ? content : null,
+            language,
+            parent_path: parentPath === '/' ? null : parentPath,
+          },
+        });
+
+        setDbFiles((prev) => {
+          const nextFiles = [...prev, data];
+          setFiles(buildFileTree(nextFiles));
+          return nextFiles;
+        });
+
+        return { fileId: data.id, error: null };
+      } catch (error) {
+        return { fileId: '', error: error as Error };
+      }
+    },
+    [projectId]
+  );
+
+  const getAllFilesContent = useCallback(
+    async (): Promise<{ files: Array<{ path: string; content: string; language: string | null }>; error: Error | null }> => {
+      if (!projectId) return { files: [], error: new Error("No project selected") };
+
+      try {
+        const dbFiles = await apiRequest<DbFile[]>(`/projects/${projectId}/files`);
+        const files = dbFiles
+          .filter(file => file.type === 'file' && file.content)
+          .map(file => ({
+            path: file.path,
+            content: file.content || '',
+            language: file.language,
+          }));
+
+        return { files, error: null };
+      } catch (error) {
+        return { files: [], error: error as Error };
+      }
+    },
+    [projectId]
+  );
+
   return {
     files,
     loading,
+    projectNotFound,
     createFile,
     updateFileContent,
     renameNode,
@@ -394,5 +499,10 @@ export const useProjectFiles = (projectId: string | null) => {
     deleteFile,
     getFileById,
     refetch: fetchFiles,
+    // AI-specific operations
+    getFileContent,
+    updateFileByAI,
+    createFileByAI,
+    getAllFilesContent,
   };
 };

@@ -8,6 +8,7 @@ export const useTerminalSocket = () => {
   const [lines, setLines] = useState<TerminalLine[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isWaitingInput, setIsWaitingInput] = useState(false);
+  const [currentCwd, setCurrentCwd] = useState<string>('');
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -23,16 +24,27 @@ export const useTerminalSocket = () => {
 
     socket.on("connect", () => {
       console.log("Terminal execution socket bound:", socket.id);
+      socket.emit("get-cwd");
     });
 
-    socket.on("execution-started", (payload: { mode: string; language: string }) => {
-      setLines([
-        {
-          type: "system",
+    socket.on("cwd-changed", ({ cwd }: { cwd: string }) => {
+      setCurrentCwd(cwd);
+    });
+
+    socket.on("clear-terminal", () => {
+      setLines([]);
+    });
+
+    socket.on("execution-started", (payload: { mode: string; language?: string; command?: string; cwd?: string }) => {
+      if (payload.cwd) setCurrentCwd(payload.cwd);
+      // Shell commands are already echoed by runShellCommand() before the event arrives
+      if (payload.mode !== 'shell') {
+        setLines(prev => [...prev, {
+          type: 'system',
           content: `[Starting ${payload.language} process via ${payload.mode} Engine]`,
           timestamp: new Date()
-        }
-      ]);
+        }]);
+      }
       setIsRunning(true);
       setIsTerminalRunning(true);
       setIsWaitingInput(false);
@@ -76,6 +88,17 @@ export const useTerminalSocket = () => {
     socketRef.current.emit("run-code", { code, language });
   }, []);
 
+  const runShellCommand = useCallback((command: string, cwd?: string) => {
+    if (!socketRef.current) return;
+    setLines((prev) => [
+      ...prev,
+      { type: 'system', content: `$ ${command}`, timestamp: new Date() }
+    ]);
+    setIsRunning(true);
+    setIsTerminalRunning(true);
+    socketRef.current.emit("run-shell-command", { command, cwd });
+  }, []);
+
   const sendInput = useCallback((input: string) => {
     if (!socketRef.current) return;
     
@@ -109,7 +132,9 @@ export const useTerminalSocket = () => {
     lines,
     isRunning,
     isWaitingInput,
+    currentCwd,
     runCode,
+    runShellCommand,
     sendInput,
     killProcess,
     clearTerminal,

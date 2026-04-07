@@ -7,6 +7,7 @@ interface BottomPanelProps {
   minHeight?: number;
   maxHeight?: number;
   onResize: (height: number) => void;
+  maxHeightFill?: boolean;
   children: React.ReactNode;
 }
 
@@ -14,7 +15,7 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
   className,
   height,
   minHeight = 120,
-  maxHeight = 520,
+  maxHeight = 2000,
   onResize,
   children,
 }) => {

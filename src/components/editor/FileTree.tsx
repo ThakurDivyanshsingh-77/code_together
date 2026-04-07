@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -12,6 +12,7 @@ import {
   FolderPlus,
   Pencil,
   Plus,
+  Terminal,
   Trash2,
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
@@ -154,6 +155,7 @@ interface FileTreeItemProps {
   onDragStart: (node: FileNode, event: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
   onDragOverFolder: (targetPath: string, event: React.DragEvent<HTMLDivElement>) => void;
+  onOpenInTerminal?: (folderPath: string) => void;
   onDropOnFolder: (targetNode: FileNode, event: React.DragEvent<HTMLDivElement>) => void;
 }
 
@@ -171,6 +173,7 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
   onRename,
   onCreateFile,
   onCreateFolder,
+  onOpenInTerminal,
   onDragStart,
   onDragEnd,
   onDragOverFolder,
@@ -288,6 +291,16 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
                   <FolderPlus className="mr-2 h-4 w-4" />
                   New Folder
                 </ContextMenuItem>
+                {onOpenInTerminal && (
+                  <ContextMenuItem onClick={() => {
+                    const path = node.path || node.id.replace('local:', '') || node.name;
+                    console.log('[FileTree] Open in Terminal clicked for:', path, 'node:', node);
+                    onOpenInTerminal(path);
+                  }}>
+                    <Terminal className="mr-2 h-4 w-4" />
+                    Open in Terminal
+                  </ContextMenuItem>
+                )}
                 <ContextMenuSeparator />
               </>
             )}
@@ -324,6 +337,7 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               onDragOverFolder={onDragOverFolder}
+              onOpenInTerminal={onOpenInTerminal}
               onDropOnFolder={onDropOnFolder}
             />
           ))}
@@ -341,6 +355,7 @@ interface FileTreeProps {
   onRenameNode?: (node: FileNode, nextName: string) => void | Promise<void>;
   onMoveNode?: (node: FileNode, destinationParentPath: string | null) => void | Promise<void>;
   onDeleteFile?: (fileId: string, filePath: string) => void | Promise<void>;
+  onOpenInTerminal?: (folderPath: string) => void;
 }
 
 export const FileTree: React.FC<FileTreeProps> = ({
@@ -350,6 +365,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
   onCreateFolder,
   onRenameNode,
   onMoveNode,
+  onOpenInTerminal,
   onDeleteFile,
 }) => {
   const {
@@ -542,6 +558,12 @@ export const FileTree: React.FC<FileTreeProps> = ({
     handleDragEnd();
   };
 
+  const handleOpenInTerminal = (folderPath: string) => {
+    if (onOpenInTerminal) {
+      onOpenInTerminal(folderPath);
+    }
+  };
+
   const handleDragOverRoot = (event: React.DragEvent<HTMLDivElement>) => {
     if (!dragState) {
       return;
@@ -642,6 +664,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragOverFolder={handleDragOverFolder}
+            onOpenInTerminal={handleOpenInTerminal}
             onDropOnFolder={handleDropOnFolder}
           />
         ))}

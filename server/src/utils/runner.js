@@ -1,7 +1,11 @@
 import { spawn } from "child_process";
+import { fileURLToPath } from "url";
 import fs from "fs";
 import path from "path";
 import os from "os";
+
+// Track running shell processes (for dev servers, etc.)
+const activeShellProcesses = new Map(); // socket.id -> { process, cwd, command }
 
 export const JUDGE0_MAP = {
   cpp: 54,
@@ -228,11 +232,145 @@ export const runWithJudge0 = async (code, language, socket) => {
       type: "system", 
       content: `[Process Finished with exit code ${result.status?.id === 3 ? 0 : result.status?.id || 1}]` 
     });
-
   } catch (error) {
     socket.emit("output", { type: "error", content: `Judge0 Error: ${error.message}` });
     if (error.message.includes("429")) {
         socket.emit("output", { type: "error", content: "NOTE: Public API hits rate limits occasionally. Try again soon." });
     }
   }
+};
+
+// ---------------------------------------------------------
+// SHELL COMMAND RUNNER (for npm, dev servers, custom commands)
+// ---------------------------------------------------------
+
+// Per-socket persistent working directory
+const socketCwds = new Map();
+
+export const getSocketCwd = (socketId) => socketCwds.get(socketId) || null;
+export const clearSocketCwd = (socketId) => socketCwds.delete(socketId);
+
+// Default working directory — user's home directory
+const getDefaultWorkingDir = () => {
+  const home = os.homedir();
+  return fs.existsSync(home) ? home : os.tmpdir();
+};
+
+export const runShellCommand = (command, initialCwd, socket, activeMap) => {
+  const isWin = os.platform() === "win32";
+  const socketId = socket.id;
+  const trimmed = command.trim();
+
+  // Resolve effective cwd (tracked > provided > default)
+  let effectiveCwd = socketCwds.get(socketId);
+  if (!effectiveCwd) {
+    effectiveCwd = (initialCwd && fs.existsSync(initialCwd)) ? initialCwd : getDefaultWorkingDir();
+    socketCwds.set(socketId, effectiveCwd);
+  }
+
+  // ── clear / cls ─────────────────────────────────────────
+  if (trimmed === "clear" || trimmed === "cls") {
+    socket.emit("clear-terminal");
+    socket.emit("cwd-changed", { cwd: effectiveCwd });
+    return;
+  }
+
+  // ── cd ──────────────────────────────────────────────────
+  // Handle locally so directory changes persist across commands
+  if (trimmed === "cd" || /^cd(\s|$)/.test(trimmed)) {
+    let target = trimmed.slice(2).trim();
+
+    // Strip surrounding quotes (e.g. cd "D:\foo" → D:\foo)
+    if ((target.startsWith('"') && target.endsWith('"')) ||
+        (target.startsWith("'") && target.endsWith("'"))) {
+      target = target.slice(1, -1);
+    }
+
+    // Windows: strip /d flag (cd /d X:\path)
+    if (isWin && target.toLowerCase().startsWith("/d ")) {
+      target = target.slice(3).trim();
+    }
+
+    // cd with no arg → home dir
+    if (!target || target === "~") {
+      const newCwd = os.homedir();
+      socketCwds.set(socketId, newCwd);
+      socket.emit("cwd-changed", { cwd: newCwd });
+      socket.emit("output", { type: "system", content: `[Process Finished with exit code 0]` });
+      return;
+    }
+
+    // Resolve relative or absolute path
+    const newCwd = path.isAbsolute(target)
+      ? path.normalize(target)
+      : path.normalize(path.join(effectiveCwd, target));
+
+    if (fs.existsSync(newCwd) && fs.statSync(newCwd).isDirectory()) {
+      socketCwds.set(socketId, newCwd);
+      socket.emit("cwd-changed", { cwd: newCwd });
+      socket.emit("output", { type: "system", content: `[Process Finished with exit code 0]` });
+    } else {
+      socket.emit("output", { type: "error", content: `Cannot find path: ${newCwd}\n` });
+      socket.emit("output", { type: "system", content: `[Process Finished with exit code 1]` });
+    }
+    return;
+  }
+
+  // ── kill any existing process ────────────────────────────
+  if (activeMap.has(socketId)) {
+    const old = activeMap.get(socketId);
+    if (!old.killed) old.kill();
+    activeMap.delete(socketId);
+  }
+
+  // ── spawn the command ────────────────────────────────────
+  const shellCmd = isWin ? "cmd.exe" : "bash";
+  const shellArgs = isWin ? ["/c", command] : ["-c", command];
+
+  try {
+    const child = spawn(shellCmd, shellArgs, {
+      cwd: effectiveCwd,
+      env: { ...process.env, PYTHONIOENCODING: "utf-8", NO_COLOR: "1", FORCE_COLOR: "0", TERM: "dumb" },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    activeMap.set(socketId, child);
+    activeShellProcesses.set(socketId, { process: child, cwd: effectiveCwd, command });
+
+    socket.emit("execution-started", { mode: "shell", command, cwd: effectiveCwd });
+
+    child.stdout.on("data", (data) => {
+      socket.emit("output", { type: "output", content: data.toString() });
+    });
+
+    child.stderr.on("data", (data) => {
+      socket.emit("output", { type: "error", content: data.toString() });
+    });
+
+    child.on("close", (code) => {
+      // Use "[Process Finished" consistently so frontend can reset isRunning
+      socket.emit("output", { type: "system", content: `[Process Finished with exit code ${code ?? 0}]` });
+      activeMap.delete(socketId);
+      activeShellProcesses.delete(socketId);
+    });
+
+    child.on("error", (err) => {
+      socket.emit("output", { type: "error", content: `Failed to run command: ${err.message}\n` });
+      activeMap.delete(socketId);
+      activeShellProcesses.delete(socketId);
+    });
+
+  } catch (err) {
+    socket.emit("output", { type: "error", content: `Failed to spawn shell: ${err.message}\n` });
+  }
+};
+
+export const stopShellProcess = (socketId) => {
+  const shellData = activeShellProcesses.get(socketId);
+  if (shellData && shellData.process && !shellData.process.killed) {
+    shellData.process.kill();
+    activeShellProcesses.delete(socketId);
+    return true;
+  }
+  return false;
 };

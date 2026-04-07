@@ -7,18 +7,44 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+server/node_modules
+
+# Build output
 dist
 dist-ssr
-*.local
 
-# Editor directories and files
+# Environment variables — NEVER commit real secrets
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Lock files (keep only package-lock.json)
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
+
+# Editor / IDE directories
 .vscode/*
 !.vscode/extensions.json
 .idea
+.kiro
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.local

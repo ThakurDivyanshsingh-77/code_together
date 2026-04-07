@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Loader2, Lock, LockOpen, Save, ShieldAlert, Users, Wifi } from 'lucide-react';
+import { LoadFolderDialog } from './LoadFolderDialog';
 import { ActivityBar } from './ActivityBar';
 import { ActiveUsersPanel } from './ActiveUsersPanel';
-import { AIAssistant } from './AIAssistant';
 import { BottomPanel } from './BottomPanel';
 import { ChatPanel } from './ChatPanel';
 import { EditorTabs } from './EditorTabs';
@@ -13,6 +13,7 @@ import { MonacoEditor } from './MonacoEditor';
 import { SearchPanel } from './SearchPanel';
 import { StatusBar } from './StatusBar';
 import { TerminalPanel } from './TerminalPanel';
+import { AIConsole } from './AIConsole';
 import { SettingsPanel } from './SettingsPanel';
 import { ExtensionsPanel } from './ExtensionsPanel';
 import { InviteCollaboratorDialog } from '@/components/projects/InviteCollaboratorDialog';
@@ -66,6 +67,7 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
   const {
     files: dbFiles,
     loading,
+    projectNotFound,
     createFile,
     renameNode,
     moveNode,
@@ -86,6 +88,9 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
     activeBottomPanel,
     setActiveBottomPanel,
     setBottomPanelHeight,
+    setSidebarWidth,
+    setRightPanelWidth,
+    setPendingTerminalCommand,
     activeActivityBar,
     htmlPreviewLayout,
     setHtmlPreviewLayout,
@@ -95,21 +100,40 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
     setCollaborators,
   } = useEditorStore();
 
+  const handleOpenInTerminal = async (folderPath: string) => {
+    try {
+      const { apiRequest } = await import('@/lib/api');
+      const result = await apiRequest<{ path: string; filesWritten: number }>(
+        `/local/projects/${projectId}/write-to-disk`,
+        { method: 'POST', body: { folderPath } }
+      );
+      setActiveBottomPanel('terminal');
+      setPendingTerminalCommand(`cd "${result.path}"`);
+      toast.success(`Project written to disk (${result.filesWritten} files). Opening terminal…`);
+    } catch {
+      // fallback: just open terminal
+      setActiveBottomPanel('terminal');
+      toast.error('Could not export project to disk. Terminal opened at current directory.');
+    }
+  };
+
   useEffect(() => {
     if (!loading && dbFiles.length > 0) {
       setFilesFromDb(dbFiles);
       setInitialized(true);
-    } else if (!loading && dbFiles.length === 0 && projectRole !== 'viewer') {
-      const initializeProject = async () => {
-        await createFile(null, 'src', 'folder');
-        await createFile('/src', 'index.js', 'file');
-        await createFile(null, 'styles.css', 'file');
-        toast.success('Project initialized with starter files');
-      };
-
-      void initializeProject();
+    } else if (!loading && dbFiles.length === 0) {
+      setFilesFromDb([]);
+      setInitialized(true);
     }
-  }, [dbFiles, loading, projectRole, setFilesFromDb, createFile]);
+  }, [dbFiles, loading, setFilesFromDb]);
+
+  // Redirect to dashboard if project not found
+  useEffect(() => {
+    if (projectNotFound) {
+      toast.error('Project not found or has been deleted');
+      navigate('/dashboard');
+    }
+  }, [projectNotFound, navigate]);
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) || null;
   const activeFileId = activeTab?.fileId || null;
@@ -177,7 +201,31 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
       ? `This file is locked by ${lockOwnerName}`
       : undefined;
 
-  const rightSidebarWidth = Math.max(280, Math.min(rightPanelWidth, 360));
+  const rightSidebarWidth = rightPanelWidth;
+
+  const startSidebarResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+    const onMove = (ev: MouseEvent) => setSidebarWidth(startWidth + ev.clientX - startX);
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.body.style.cursor = ''; document.body.style.userSelect = ''; };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [sidebarWidth, setSidebarWidth]);
+
+  const startRightResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = rightPanelWidth;
+    const onMove = (ev: MouseEvent) => setRightPanelWidth(startWidth - (ev.clientX - startX));
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.body.style.cursor = ''; document.body.style.userSelect = ''; };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [rightPanelWidth, setRightPanelWidth]);
 
   useEffect(() => {
     if (!activeFileId || !isLockedByCurrentUser) {
@@ -275,8 +323,8 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <div className="relative flex h-11 items-center justify-between border-b border-border bg-sidebar px-3 text-xs">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex h-11 items-center border-b border-border bg-sidebar px-3 text-xs">
+        <div className="flex shrink-0 items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 rounded-sm hover:bg-sidebar-hover">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -293,11 +341,11 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
           </span>
         </div>
 
-        <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 text-[12px] text-muted-foreground xl:flex">
-          <span>{activeTab?.path || 'Collaborative Code Editor'}</span>
+        <div className="mx-3 hidden min-w-0 flex-1 items-center justify-center gap-2 text-[12px] text-muted-foreground xl:flex">
+          <span className="truncate">{activeTab?.path || 'Collaborative Code Editor'}</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <div className="hidden items-center gap-1 rounded-sm border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground md:flex">
             <Wifi className={cn('h-3 w-3', connectionStatus === 'connected' ? 'text-success' : 'text-warning')} />
             <span>{connectionStatus}</span>
@@ -345,6 +393,12 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
             </div>
           )}
 
+          {canEditProject && (
+            <LoadFolderDialog
+              projectId={projectId}
+              onImportComplete={() => void refetch(true)}
+            />
+          )}
           {isProjectOwner && <InviteCollaboratorDialog projectId={projectId} />}
           <div
             className="hidden h-7 w-7 items-center justify-center rounded-sm text-[10px] font-medium text-white sm:flex"
@@ -359,10 +413,8 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
       <div className="flex flex-1 overflow-hidden">
         <ActivityBar />
 
-        <div
-          className="flex flex-col overflow-hidden border-r border-border bg-sidebar"
-          style={{ width: sidebarWidth }}
-        >
+        <div className="flex overflow-hidden" style={{ width: sidebarWidth, flexShrink: 0 }}>
+          <div className="flex flex-col overflow-hidden border-r border-border bg-sidebar flex-1 min-w-0">
           {activeActivityBar === 'files' && (
             <FileTree
               className="flex-1"
@@ -372,6 +424,7 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
               onRenameNode={handleRenameNode}
               onMoveNode={handleMoveNode}
               onDeleteFile={handleDeleteFile}
+              onOpenInTerminal={handleOpenInTerminal}
             />
           )}
           {activeActivityBar === 'search' && <SearchPanel className="flex-1" />}
@@ -399,56 +452,132 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
               </div>
             </div>
           )}
+          </div>
+          {/* Left sidebar resize handle */}
+          <div
+            onMouseDown={startSidebarResize}
+            className="resizer resizer-horizontal w-1 flex-shrink-0 z-10"
+            title="Drag to resize explorer"
+          />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 overflow-hidden">
 
-            {/* Editor + Preview Split Container */}
-            <div className="flex min-w-0 flex-1 overflow-hidden">
+            {/* Editor column — terminal/AI console only affects this column */}
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 
-              {/* Monaco Editor — always shown unless Preview-only mode */}
-              {(htmlPreviewLayout === 'editor' || htmlPreviewLayout === 'split' || !isHtmlFile) && (
-                <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                  <EditorTabs />
-                  <MonacoEditor
-                    className="flex-1"
-                    onContentChange={handleContentChange}
-                    readOnly={isReadOnly}
-                    readOnlyReason={readOnlyReason}
-                    onCursorChange={(line, column) => {
-                      updateCursor(line, column);
-                    }}
-                    collaboratorCursors={onlineUsers
-                      .filter((participant) => participant.user_id !== user?.id)
-                      .map((participant) => ({
-                        userId: participant.user_id,
-                        userName: participant.profile?.display_name || 'Unknown',
-                        color: participant.profile?.color || 1,
-                        line: participant.cursor_line || 1,
-                        column: participant.cursor_column || 1,
-                        filePath: participant.file_path || '',
-                      }))}
-                  />
-                </div>
+              {/* Editor + Preview Split Container */}
+              <div className="flex min-w-0 flex-1 overflow-hidden">
+
+                {/* Monaco Editor — always shown unless Preview-only mode */}
+                {(htmlPreviewLayout === 'editor' || htmlPreviewLayout === 'split' || !isHtmlFile) && (
+                  <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                    <EditorTabs />
+                    <MonacoEditor
+                      className="flex-1"
+                      onContentChange={handleContentChange}
+                      readOnly={isReadOnly}
+                      readOnlyReason={readOnlyReason}
+                      onCursorChange={(line, column) => {
+                        updateCursor(line, column);
+                      }}
+                      collaboratorCursors={onlineUsers
+                        .filter((participant) => participant.user_id !== user?.id)
+                        .map((participant) => ({
+                          userId: participant.user_id,
+                          userName: participant.profile?.display_name || 'Unknown',
+                          color: participant.profile?.color || 1,
+                          line: participant.cursor_line || 1,
+                          column: participant.cursor_column || 1,
+                          filePath: participant.file_path || '',
+                        }))}
+                    />
+                  </div>
+                )}
+
+                {/* HTML Preview — shown in split & preview modes for html/css files */}
+                {(htmlPreviewLayout === 'split' || htmlPreviewLayout === 'preview') && isHtmlFile && (
+                  <div
+                    className="flex min-w-0 flex-col overflow-hidden border-l border-border"
+                    style={{ flex: htmlPreviewLayout === 'preview' ? '1 1 100%' : '1 1 50%' }}
+                  >
+                    <HTMLPreview code={currentCode} onClose={() => setHtmlPreviewLayout('editor')} />
+                  </div>
+                )}
+
+              </div>
+
+              {/* Bottom panel — only inside editor column, right panel unaffected */}
+              {activeBottomPanel && (
+                <BottomPanel height={bottomPanelHeight} onResize={setBottomPanelHeight}>
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center border-b border-[#333] shrink-0" style={{ backgroundColor: '#252526' }}>
+                      <button
+                        onClick={() => setActiveBottomPanel('terminal')}
+                        className="px-4 py-1.5 text-[11px] font-medium tracking-wide uppercase transition-colors border-t-2"
+                        style={{
+                          borderTopColor: activeBottomPanel === 'terminal' ? '#ffb86c' : 'transparent',
+                          color: activeBottomPanel === 'terminal' ? '#ffb86c' : '#6272a4',
+                          backgroundColor: activeBottomPanel === 'terminal' ? 'rgba(255,184,108,0.07)' : 'transparent',
+                        }}
+                      >
+                        Terminal
+                      </button>
+                      <button
+                        onClick={() => setActiveBottomPanel('ai')}
+                        className="px-4 py-1.5 text-[11px] font-medium tracking-wide uppercase transition-colors border-t-2"
+                        style={{
+                          borderTopColor: activeBottomPanel === 'ai' ? '#bd93f9' : 'transparent',
+                          color: activeBottomPanel === 'ai' ? '#bd93f9' : '#6272a4',
+                          backgroundColor: activeBottomPanel === 'ai' ? 'rgba(189,147,249,0.07)' : 'transparent',
+                        }}
+                      >
+                        AI Console
+                      </button>
+                      <div className="flex-1" />
+                      <button
+                        className="px-2 py-1 text-[11px] hover:bg-white/5 transition-colors"
+                        style={{ color: '#6272a4' }}
+                        onClick={() => setActiveBottomPanel(null)}
+                        title="Close panel"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      {activeBottomPanel === 'terminal' && (
+                        <TerminalPanel
+                          className="h-full"
+                          codeToRun={currentCode}
+                          language={currentLanguage}
+                          filePath={activeTab?.path}
+                          fileName={activeTab?.name}
+                        />
+                      )}
+                      {activeBottomPanel === 'ai' && (
+                        <AIConsole
+                          className="h-full"
+                          projectId={projectId}
+                          onFilesChanged={() => void refetch(true)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </BottomPanel>
               )}
-
-              {/* HTML Preview — shown in split & preview modes for html/css files */}
-              {(htmlPreviewLayout === 'split' || htmlPreviewLayout === 'preview') && isHtmlFile && (
-                <div
-                  className="flex min-w-0 flex-col overflow-hidden border-l border-border"
-                  style={{ flex: htmlPreviewLayout === 'preview' ? '1 1 100%' : '1 1 50%' }}
-                >
-                  <HTMLPreview code={currentCode} />
-                </div>
-              )}
-
             </div>
 
-            <div
-              className="flex flex-col overflow-hidden border-l border-border bg-card"
-              style={{ width: rightSidebarWidth }}
-            >
+            {/* Right panel — always full height, never affected by bottom panel */}
+            <div className="flex overflow-hidden" style={{ width: rightSidebarWidth, flexShrink: 0 }}>
+              {/* Right panel resize handle */}
+              <div
+                onMouseDown={startRightResize}
+                className="resizer resizer-horizontal w-1 flex-shrink-0 z-10"
+                title="Drag to resize panel"
+              />
+              <div
+                className="flex flex-col overflow-hidden border-l border-border bg-card flex-1 min-w-0">
               <ActiveUsersPanel
                 users={onlineUsers}
                 currentUserId={user?.id || null}
@@ -457,30 +586,17 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = (props) =
 
               <div className="min-h-0 flex-1 overflow-hidden">
                 {activeRightPanel === 'chat' && <ChatPanel className="h-full" projectId={projectId} />}
-                {activeRightPanel === 'ai' && <AIAssistant className="h-full" />}
                 {!activeRightPanel && (
                   <div className="flex flex-col items-center justify-center h-full p-6 text-center text-muted-foreground">
                     <Users className="h-10 w-10 mb-3 opacity-20" />
                     <p className="text-sm font-medium">Collaboration</p>
-                    <p className="text-xs mt-1">Open Chat or AI Assistant to collaborate with your team.</p>
+                    <p className="text-xs mt-1">Open Chat to collaborate with your team.</p>
                   </div>
                 )}
               </div>
             </div>
+            </div>
           </div>
-
-          {activeBottomPanel && (
-            <BottomPanel height={bottomPanelHeight} onResize={setBottomPanelHeight}>
-              <TerminalPanel
-                className="h-full"
-                onClose={() => setActiveBottomPanel(null)}
-                codeToRun={currentCode}
-                language={currentLanguage}
-                filePath={activeTab?.path}
-                fileName={activeTab?.name}
-              />
-            </BottomPanel>
-          )}
         </div>
       </div>
 

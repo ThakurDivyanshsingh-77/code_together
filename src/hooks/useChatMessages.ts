@@ -3,6 +3,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { ChatMessage } from "@/types/editor";
 import { ChatMessageRow, resolveCurrentChatUser, toChatMessage } from "@/lib/chat";
+import { useAblyChat } from "@/lib/ably";
 
 export type { ChatMessageRow } from "@/lib/chat";
 
@@ -51,12 +52,37 @@ export const useChatMessages = (projectId: string) => {
   useEffect(() => {
     if (!projectId) return;
 
+    // Polling as fallback if Ably is not available
     const interval = window.setInterval(() => {
       fetchMessages(true);
-    }, 2000);
+    }, 5000); // Reduced polling frequency since we have Ably
 
     return () => window.clearInterval(interval);
   }, [projectId, fetchMessages]);
+
+  // Ably real-time message handler
+  const handleAblyMessage = useCallback((message: any) => {
+    const mappedMessage = toChatMessage(message, currentChatUser);
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === mappedMessage.id)) return prev;
+      return [...prev, mappedMessage];
+    });
+  }, [currentChatUser]);
+
+  // Ably real-time reaction handler
+  const handleAblyReaction = useCallback((data: { messageId: string; reactions: Record<string, string[]> }) => {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id === data.messageId) {
+          return { ...msg, reactions: data.reactions };
+        }
+        return msg;
+      })
+    );
+  }, []);
+
+  // Subscribe to Ably channel
+  useAblyChat(projectId || undefined, handleAblyMessage, handleAblyReaction);
 
   const sendMessage = useCallback(
     async (content: string) => {

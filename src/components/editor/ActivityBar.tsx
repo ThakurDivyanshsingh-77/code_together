@@ -6,8 +6,8 @@ import {
   Package, 
   Settings, 
   MessageSquare, 
-  Bot,
-  Terminal
+  Terminal,
+  SquareTerminal
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { cn } from '@/lib/utils';
@@ -34,10 +34,10 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ className }) => {
   ];
 
   const bottomItems = [
-    { id: 'chat' as const, icon: MessageSquare, label: 'Chat', panel: 'chat' as const },
-    { id: 'ai' as const, icon: Bot, label: 'AI Assistant', panel: 'ai' as const },
-    { id: 'terminal' as const, icon: Terminal, label: 'Terminal', panel: 'terminal' as const },
-    { id: 'settings' as const, icon: Settings, label: 'Settings' },
+    { id: 'chat' as const, icon: MessageSquare, label: 'Chat', panel: 'chat' as const, panelType: 'right' as const },
+    { id: 'terminal' as const, icon: Terminal, label: 'Terminal', panel: 'terminal' as const, panelType: 'bottom' as const },
+    { id: 'ai-console' as const, icon: SquareTerminal, label: 'AI Console', panel: 'ai' as const, panelType: 'bottom' as const },
+    { id: 'settings' as const, icon: Settings, label: 'Settings', panelType: 'activity' as const },
   ];
 
   return (
@@ -68,19 +68,21 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ className }) => {
           <button
             key={item.id}
             onClick={() => {
-              if (item.panel === 'terminal') {
-                setActiveBottomPanel(activeBottomPanel === 'terminal' ? null : 'terminal');
-              } else if (item.panel) {
-                setActiveRightPanel(activeRightPanel === item.panel ? null : item.panel);
+              if (item.panelType === 'bottom' && item.panel) {
+                const bottomPanel = item.panel as 'terminal' | 'ai';
+                setActiveBottomPanel(activeBottomPanel === bottomPanel ? null : bottomPanel);
+              } else if (item.panelType === 'right' && item.panel) {
+                const rightPanel = item.panel as 'chat' | 'ai';
+                setActiveRightPanel(activeRightPanel === rightPanel ? null : rightPanel);
               } else {
                 setActiveActivityBar(item.id as any);
               }
             }}
             className={cn(
               "activity-bar-icon",
-              (item.panel === 'terminal' && activeBottomPanel === 'terminal') && "active",
-              (item.panel && item.panel !== 'terminal' && activeRightPanel === item.panel) && "active",
-              (!item.panel && activeActivityBar === item.id) && "active"
+              (item.panelType === 'bottom' && activeBottomPanel === item.panel) && "active",
+              (item.panelType === 'right' && activeRightPanel === item.panel) && "active",
+              (item.panelType === 'activity' && activeActivityBar === item.id) && "active"
             )}
             title={item.label}
           >

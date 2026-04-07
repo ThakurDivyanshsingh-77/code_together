@@ -329,7 +329,7 @@ const sampleMessages: ChatMessage[] = [
   },
 ];
 
-type AIAction = 'explain_selected_code' | 'fix_bugs' | 'refactor_code' | 'generate_function' | 'chat_about_file';
+type AIAction = 'explain_selected_code' | 'fix_bugs' | 'refactor_code' | 'generate_function' | 'chat_about_file' | 'read_file' | 'write_file' | 'create_file' | 'analyze_project' | 'fix_errors' | 'fix_ui';
 
 interface SendAIMessageInput {
   action: AIAction;
@@ -338,6 +338,8 @@ interface SendAIMessageInput {
   fileLanguage?: string;
   fileContent?: string;
   selectedCode?: string;
+  projectId?: string;
+  filePath?: string;
 }
 
 interface AIChatResponse {
@@ -367,8 +369,8 @@ interface EditorState {
   messages: ChatMessage[];
   
   // AI Assistant
-  aiMessages: AIMessage[];
-  isAILoading: boolean;
+  aiMessages: Record<string, AIMessage[]>; // project_id -> messages
+  isAILoading: Record<string, boolean>; // project_id -> loading state
   selectedCode: string;
   
   // UI state
@@ -379,8 +381,9 @@ interface EditorState {
   rightPanelWidth: number;
   bottomPanelHeight: number;
   activeRightPanel: 'chat' | 'ai' | null;
-  activeBottomPanel: 'terminal' | 'output' | null;
+  activeBottomPanel: 'terminal' | 'output' | 'ai' | null;
   activeActivityBar: 'files' | 'search' | 'git' | 'extensions' | 'settings';
+  pendingTerminalCommand: string | null;
   
   // HTML Preview
   htmlPreviewLayout: 'editor' | 'split' | 'preview';
@@ -404,7 +407,8 @@ interface EditorState {
   setRightPanelWidth: (width: number) => void;
   setBottomPanelHeight: (height: number) => void;
   setActiveRightPanel: (panel: 'chat' | 'ai' | null) => void;
-  setActiveBottomPanel: (panel: 'terminal' | 'output' | null) => void;
+  setActiveBottomPanel: (panel: 'terminal' | 'output' | 'ai' | null) => void;
+  setPendingTerminalCommand: (cmd: string | null) => void;
   setActiveActivityBar: (activity: 'files' | 'search' | 'git' | 'extensions' | 'settings') => void;
   setHtmlPreviewLayout: (layout: 'editor' | 'split' | 'preview') => void;
   setEditorFontSize: (size: number) => void;
@@ -424,6 +428,7 @@ interface EditorState {
   isTerminalRunning: boolean;
   setIsTerminalRunning: (isRunning: boolean) => void;
   getAllFiles: () => FlatFileNode[];
+  clearAIMessages: (projectId: string) => void;
 }
 
 // Helper function to find file by ID
@@ -599,18 +604,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     { userId: '3', line: 23, column: 12, fileName: 'App.tsx' },
   ],
   messages: sampleMessages,
-  aiMessages: [],
-  isAILoading: false,
+  aiMessages: {},
+  isAILoading: {},
   selectedCode: '',
   editorFontSize: 13,
   editorWordWrap: 'off',
   editorMinimap: true,
   sidebarWidth: 280,
   rightPanelWidth: 320,
-  bottomPanelHeight: 200,
+  bottomPanelHeight: 350,
   activeRightPanel: null,
   activeBottomPanel: null,
   activeActivityBar: 'files',
+  pendingTerminalCommand: null,
   installedExtensions: ['vscode-icons'],
   triggerRun: 0,
   isTerminalRunning: false,
@@ -726,6 +732,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!prompt) return;
 
     const state = get();
+    const projectId = input.projectId || 'local'; // Use provided projectId or 'local' as fallback
+    
     const userMessage: AIMessage = {
       id: `ai-${Date.now()}`,
       role: 'user',
@@ -733,15 +741,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       timestamp: new Date(),
     };
 
-    const priorConversation = state.aiMessages.slice(-8).map((message) => ({
+    const currentMessages = state.aiMessages[projectId] || [];
+    const priorConversation = currentMessages.slice(-8).map((message) => ({
       role: message.role,
       content: message.content,
     }));
 
-    set({
-      aiMessages: [...state.aiMessages, userMessage],
-      isAILoading: true,
-    });
+    set((currentState) => ({
+      aiMessages: {
+        ...currentState.aiMessages,
+        [projectId]: [...currentMessages, userMessage]
+      },
+      isAILoading: {
+        ...currentState.isAILoading,
+        [projectId]: true
+      },
+    }));
 
     try {
       const response = await apiRequest<AIChatResponse>('/ai/chat', {
@@ -764,10 +779,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         timestamp: new Date(),
       };
 
-      set((currentState) => ({
-        aiMessages: [...currentState.aiMessages, assistantMessage],
-        isAILoading: false,
-      }));
+      set((currentState) => {
+        const projectMessages = currentState.aiMessages[projectId] || [];
+        return {
+          aiMessages: {
+            ...currentState.aiMessages,
+            [projectId]: [...projectMessages, assistantMessage]
+          },
+          isAILoading: {
+            ...currentState.isAILoading,
+            [projectId]: false
+          },
+        };
+      });
     } catch (error) {
       const assistantMessage: AIMessage = {
         id: `ai-${Date.now() + 1}`,
@@ -776,10 +800,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         timestamp: new Date(),
       };
 
-      set((currentState) => ({
-        aiMessages: [...currentState.aiMessages, assistantMessage],
-        isAILoading: false,
-      }));
+      set((currentState) => {
+        const projectMessages = currentState.aiMessages[projectId] || [];
+        return {
+          aiMessages: {
+            ...currentState.aiMessages,
+            [projectId]: [...projectMessages, assistantMessage]
+          },
+          isAILoading: {
+            ...currentState.isAILoading,
+            [projectId]: false
+          },
+        };
+      });
     }
   },
 
@@ -789,9 +822,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setSidebarWidth: (width: number) => set({ sidebarWidth: Math.max(200, Math.min(500, width)) }),
   setRightPanelWidth: (width: number) => set({ rightPanelWidth: Math.max(250, Math.min(500, width)) }),
-  setBottomPanelHeight: (height: number) => set({ bottomPanelHeight: Math.max(100, Math.min(400, height)) }),
+  setBottomPanelHeight: (height: number) => set({ bottomPanelHeight: Math.max(120, Math.min(2000, height)) }),
   setActiveRightPanel: (panel) => set({ activeRightPanel: panel }),
   setActiveBottomPanel: (panel) => set({ activeBottomPanel: panel }),
+  setPendingTerminalCommand: (cmd: string | null) => set({ pendingTerminalCommand: cmd }),
   setActiveActivityBar: (activity) => set({ activeActivityBar: activity }),
   setEditorFontSize: (size) => set({ editorFontSize: size }),
   setEditorWordWrap: (wrap) => set({ editorWordWrap: wrap }),
@@ -1229,5 +1263,18 @@ body {
 
   setCollaborators: (collaborators: User[]) => {
     set({ collaborators });
+  },
+
+  clearAIMessages: (projectId: string) => {
+    set((currentState) => ({
+      aiMessages: {
+        ...currentState.aiMessages,
+        [projectId]: []
+      },
+      isAILoading: {
+        ...currentState.isAILoading,
+        [projectId]: false
+      },
+    }));
   },
 }));

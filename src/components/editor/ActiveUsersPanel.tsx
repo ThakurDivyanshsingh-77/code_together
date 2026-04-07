@@ -1,4 +1,3 @@
-import React from 'react';
 import { Eye, PencilLine, Users } from 'lucide-react';
 import { PresenceParticipant } from '@/hooks/useCollaborationSession';
 import { cn } from '@/lib/utils';

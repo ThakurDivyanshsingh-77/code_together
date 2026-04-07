@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { useEditorStore } from '@/store/editorStore';
-import { Loader2, Code, Eye, Play, Terminal, Lock, Columns, Globe } from 'lucide-react';
+import { Loader2, Lock, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { executeCode, isExecutableLanguage, getLanguageInfo, SupportedLanguage } from '@/lib/sandboxExecutor';
-import { RunButton } from './RunButton';
+import { isExecutableLanguage } from '@/lib/sandboxExecutor';
 
 interface CollaboratorCursor {
   userId: string;
@@ -43,7 +42,6 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     activeTabId,
     updateFileContent,
     setActiveBottomPanel,
-    activeBottomPanel,
     setSelectedCode,
     editorFontSize,
     editorWordWrap,
@@ -52,7 +50,6 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     setHtmlPreviewLayout,
   } = useEditorStore();
 
-  const [isRunning, setIsRunning] = useState(false);
   const [quickResult, setQuickResult] = useState<QuickExecutionResult | null>(null);
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
@@ -99,40 +96,16 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
   const { setTriggerRun } = useEditorStore();
 
-  const handleRunCode = async () => {
+  const handleRunCode = () => {
     if (!activeTab) return;
-
     const language = activeTab.language;
     const isHtml = language.toLowerCase() === 'html' || language.toLowerCase() === 'css';
-    
-    if (isHtml) {
-      if (htmlPreviewLayout === 'editor') {
-        setHtmlPreviewLayout('split');
-      }
-      return;
-    }
-
-    if (isRunning) return;
-
-    if (!isExecutableLanguage(language)) {
-      setActiveBottomPanel('terminal');
-      return;
-    }
-
-    // Trigger explicit execution natively bridging back up to Terminal UI socket array
+    if (isHtml) { if (htmlPreviewLayout === 'editor') setHtmlPreviewLayout('split'); return; }
+    if (!isExecutableLanguage(language)) { setActiveBottomPanel('terminal'); return; }
     setActiveBottomPanel('terminal');
     setQuickResult(null);
     setTriggerRun(Date.now());
   };
-
-  const handleOpenTerminal = () => {
-    setActiveBottomPanel('terminal');
-    setQuickResult(null);
-  };
-
-  const isHtmlPreviewable = activeTab?.language.toLowerCase() === 'html' || activeTab?.language.toLowerCase() === 'css';
-  const isExecutable = activeTab && isExecutableLanguage(activeTab.language);
-  const hasPrimaryRunAction = Boolean(activeTab && (isExecutable || isHtmlPreviewable));
 
   if (!activeTab) {
     return (
@@ -157,80 +130,22 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
         </div>
       )}
 
-      <div className="absolute top-2 right-6 z-10 flex items-center gap-3">
-        {collaboratorCursors.length > 0 && (
-          <div className="flex items-center gap-2">
-            {collaboratorCursors
-              .filter((cursor) => cursor.filePath === activeTab.path)
-              .map((cursor) => (
-                <div
-                  key={cursor.userId}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs font-medium"
-                  style={{ backgroundColor: `hsl(var(--user-${cursor.color}))` }}
-                >
-                  <span className="text-primary-foreground">{cursor.userName}</span>
-                  <span className="text-primary-foreground/70">Line {cursor.line}</span>
-                </div>
-              ))}
-          </div>
-        )}
-
-        {isHtmlPreviewable && (
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-sm border border-border">
-            <button
-              onClick={() => setHtmlPreviewLayout('editor')}
-              className={cn(
-                'px-2.5 py-1 rounded-sm text-xs font-medium transition-colors flex items-center gap-1.5',
-                htmlPreviewLayout === 'editor' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-              )}
-              title="Editor Only"
-            >
-              <Code className="w-3.5 h-3.5" />
-              <span>Editor</span>
-            </button>
-            <button
-              onClick={() => setHtmlPreviewLayout('split')}
-              className={cn(
-                'px-2.5 py-1 rounded-sm text-xs font-medium transition-colors flex items-center gap-1.5',
-                htmlPreviewLayout === 'split' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-              )}
-              title="Split View"
-            >
-              <Columns className="w-3.5 h-3.5" />
-              <span>Split</span>
-            </button>
-            <button
-              onClick={() => setHtmlPreviewLayout('preview')}
-              className={cn(
-                'px-2.5 py-1 rounded-sm text-xs font-medium transition-colors flex items-center gap-1.5',
-                htmlPreviewLayout === 'preview' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-              )}
-              title="Preview Only"
-            >
-              <Globe className="w-3.5 h-3.5" />
-              <span>Preview</span>
-            </button>
-          </div>
-        )}
-
-        {isExecutable && !isHtmlPreviewable && (
-          <div className="flex items-center gap-2">
-            <RunButton />
-
-            <button
-              onClick={handleOpenTerminal}
-              className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-xs font-medium border border-border',
-                'bg-muted text-muted-foreground hover:bg-muted/80 transition-colors',
-                activeBottomPanel === 'terminal' && 'ring-1 ring-primary'
-              )}
-              title="Open Terminal"
-            >
-              <Terminal className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-      </div>
+      {collaboratorCursors.length > 0 && (
+        <div className="absolute top-2 right-6 z-10 flex items-center gap-1.5">
+          {collaboratorCursors
+            .filter((cursor) => cursor.filePath === activeTab.path)
+            .map((cursor) => (
+              <div
+                key={cursor.userId}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs font-medium"
+                style={{ backgroundColor: `hsl(var(--user-${cursor.color}))` }}
+              >
+                <span className="text-primary-foreground">{cursor.userName}</span>
+                <span className="text-primary-foreground/70">L{cursor.line}</span>
+              </div>
+            ))}
+        </div>
+      )}
 
       {quickResult && (
         <div className="absolute bottom-4 left-4 right-4 z-10 max-h-48 overflow-auto rounded-sm border border-border bg-card/95 backdrop-blur-sm shadow-xl">
@@ -267,6 +182,89 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
           </div>
         }
         beforeMount={(monaco) => {
+          // ── TypeScript / JSX config ─────────────────────────
+          const tsDefaults = monaco.languages.typescript.typescriptDefaults;
+          const jsDefaults = monaco.languages.typescript.javascriptDefaults;
+
+          const sharedCompilerOptions = {
+            target: monaco.languages.typescript.ScriptTarget.Latest,
+            allowNonTsExtensions: true,
+            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+            module: monaco.languages.typescript.ModuleKind.ESNext,
+            noEmit: true,
+            esModuleInterop: true,
+            allowSyntheticDefaultImports: true,
+            allowJs: true,
+            strict: false,
+            noImplicitAny: false,
+            skipLibCheck: true,
+            jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+          };
+
+          tsDefaults.setCompilerOptions(sharedCompilerOptions);
+          jsDefaults.setCompilerOptions({ ...sharedCompilerOptions, checkJs: false });
+
+          // Suppress "Cannot find module" errors by catching all unknown imports
+          const moduleStub = `declare module '*';`;
+
+          // Minimal React stubs so hooks / JSX / FC don't flag as unknown
+          const reactStub = `
+declare module 'react' {
+  export type FC<P = {}> = (props: P & { children?: ReactNode }) => ReactElement | null;
+  export type ReactNode = ReactElement | string | number | boolean | null | undefined | ReactNode[];
+  export type ReactElement = { type: any; props: any; key: any; };
+  export type CSSProperties = { [key: string]: string | number | undefined };
+  export type Ref<T> = { current: T | null };
+  export type MutableRefObject<T> = { current: T };
+  export type ChangeEvent<T> = { target: T & { value: string; checked: boolean } };
+  export type MouseEvent<T = Element> = { target: T; currentTarget: T; preventDefault(): void; stopPropagation(): void };
+  export type KeyboardEvent<T = Element> = { key: string; code: string; target: T; preventDefault(): void };
+  export type FormEvent<T = Element> = { target: T; preventDefault(): void };
+  export type ComponentType<P = {}> = FC<P>;
+  export type Context<T> = { Provider: FC<{ value: T; children?: ReactNode }>; Consumer: any; displayName?: string };
+  export type Dispatch<A> = (value: A) => void;
+  export type SetStateAction<S> = S | ((prevState: S) => S);
+  export function useState<S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>];
+  export function useState<S = undefined>(): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
+  export function useEffect(effect: () => (void | (() => void)), deps?: ReadonlyArray<unknown>): void;
+  export function useLayoutEffect(effect: () => (void | (() => void)), deps?: ReadonlyArray<unknown>): void;
+  export function useRef<T>(initialValue: T): MutableRefObject<T>;
+  export function useRef<T>(initialValue: T | null): Ref<T>;
+  export function useRef<T = undefined>(): MutableRefObject<T | undefined>;
+  export function useCallback<T extends (...args: any[]) => any>(callback: T, deps: ReadonlyArray<unknown>): T;
+  export function useMemo<T>(factory: () => T, deps: ReadonlyArray<unknown> | null): T;
+  export function useContext<T>(context: Context<T>): T;
+  export function useReducer<R extends (prevState: any, action: any) => any>(reducer: R, initialState: Parameters<R>[0]): [Parameters<R>[0], Dispatch<Parameters<R>[1]>];
+  export function createContext<T>(defaultValue: T): Context<T>;
+  export function memo<T extends ComponentType<any>>(component: T): T;
+  export function forwardRef<T, P = {}>(render: (props: P, ref: Ref<T>) => ReactElement | null): FC<P & { ref?: Ref<T> }>;
+  export function createPortal(children: ReactNode, container: Element): ReactElement;
+  export const Fragment: FC<{ children?: ReactNode }>;
+  export const StrictMode: FC<{ children?: ReactNode }>;
+  export const Suspense: FC<{ children?: ReactNode; fallback?: ReactNode }>;
+  export function lazy<T extends ComponentType<any>>(factory: () => Promise<{ default: T }>): T;
+  export default React;
+  declare namespace React {
+    export type FC<P = {}> = (props: P & { children?: ReactNode }) => ReactElement | null;
+    export type ReactNode = ReactElement | string | number | boolean | null | undefined | ReactNode[];
+    export type ReactElement = { type: any; props: any; key: any; };
+    export type CSSProperties = { [key: string]: string | number | undefined };
+  }
+}
+declare global {
+  namespace JSX {
+    interface Element {}
+    interface IntrinsicElements { [elemName: string]: any }
+    interface ElementChildrenAttribute { children: {} }
+    interface IntrinsicAttributes { key?: string | number }
+  }
+}`;
+
+          tsDefaults.addExtraLib(reactStub, 'ts:react.d.ts');
+          tsDefaults.addExtraLib(moduleStub, 'ts:module-stub.d.ts');
+          jsDefaults.addExtraLib(reactStub, 'ts:react.d.ts');
+          jsDefaults.addExtraLib(moduleStub, 'ts:module-stub.d.ts');
+
           monaco.editor.defineTheme('vscode-dark-plus', {
             base: 'vs-dark',
             inherit: true,
