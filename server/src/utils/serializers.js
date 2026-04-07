@@ -113,14 +113,33 @@ export const serializePresence = (presence, profile) => ({
     : undefined,
 });
 
-export const serializeChatMessage = (message, profile) => ({
-  id: toId(message._id),
-  project_id: toId(message.project),
-  user_id: toId(message.user),
-  content: message.content,
-  type: message.type,
-  created_at: new Date(message.createdAt).toISOString(),
-  user_name: profile?.displayName || "Unknown",
-  user_color: profile?.color || 1,
-  reactions: message.reactions ? Object.fromEntries(message.reactions) : {},
-});
+export const serializeChatMessage = (message, profile) => {
+  // Handle reactions - could be a Mongoose Map, plain object, or undefined
+  let reactions = {};
+  if (message.reactions) {
+    if (message.reactions instanceof Map) {
+      reactions = Object.fromEntries(message.reactions);
+    } else if (typeof message.reactions === 'object') {
+      // If it's already a plain object or Mongoose's map type
+      try {
+        reactions = Object.fromEntries(
+          Object.entries(message.reactions).filter(([key]) => key !== '_id')
+        );
+      } catch (e) {
+        reactions = {};
+      }
+    }
+  }
+
+  return {
+    id: toId(message._id),
+    project_id: toId(message.project),
+    user_id: toId(message.user),
+    content: message.content,
+    type: message.type,
+    created_at: new Date(message.createdAt).toISOString(),
+    user_name: profile?.displayName || "Unknown",
+    user_color: profile?.color || 1,
+    reactions,
+  };
+};

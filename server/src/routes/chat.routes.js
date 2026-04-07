@@ -3,6 +3,7 @@ import ChatMessage from "../models/ChatMessage.js";
 import User from "../models/User.js";
 import { getProjectAccess } from "../utils/projectAccess.js";
 import { serializeChatMessage } from "../utils/serializers.js";
+import { publishChatMessage, publishReactionUpdate } from "../utils/ably.js";
 
 const router = express.Router();
 
@@ -46,7 +47,8 @@ router.get("/:projectId/chat", async (req, res) => {
 
     return res.json(messages.map((message) => serializeChatMessage(message, userMap.get(message.user.toString()))));
   } catch (error) {
-    return res.status(500).json({ message: "Failed to load chat messages" });
+    console.error("Chat fetch error:", error);
+    return res.status(500).json({ message: "Failed to load chat messages", error: error.message });
   }
 });
 
@@ -73,12 +75,16 @@ router.post("/:projectId/chat", async (req, res) => {
       type,
     });
 
-    return res.status(201).json(
-      serializeChatMessage(message, {
-        displayName: req.auth.user.displayName,
-        color: req.auth.user.color,
-      })
-    );
+    // Serialize message for response and Ably
+    const serializedMessage = serializeChatMessage(message, {
+      displayName: req.auth.user.displayName,
+      color: req.auth.user.color,
+    });
+
+    // Publish to Ably real-time channel
+    await publishChatMessage(projectId, serializedMessage);
+
+    return res.status(201).json(serializedMessage);
   } catch (error) {
     return res.status(500).json({ message: "Failed to send chat message" });
   }
@@ -124,9 +130,14 @@ router.post("/:projectId/chat/:messageId/reaction", async (req, res) => {
 
     await message.save();
 
+    const reactions = Object.fromEntries(message.reactions);
+    
+    // Publish reaction update to Ably
+    await publishReactionUpdate(projectId, messageId, reactions);
+
     return res.status(200).json({
        messageId,
-       reactions: Object.fromEntries(message.reactions)
+       reactions
     });
   } catch (error) {
     return res.status(500).json({ message: "Failed to toggle reaction" });

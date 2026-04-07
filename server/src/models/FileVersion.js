@@ -50,7 +50,7 @@ const fileVersionSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ["manual", "autosave", "system"],
+      enum: ["manual", "autosave", "system", "import"],
       default: "manual",
     },
   },

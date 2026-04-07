@@ -133,8 +133,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Share Tech Mono", "system-ui", "sans-serif"],
-        heading: ["Orbitron", "Share Tech Mono", "monospace"],
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        heading: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
         mono: ["JetBrains Mono", "Fira Code", "Consolas", "monospace"],
       },
       borderRadius: {

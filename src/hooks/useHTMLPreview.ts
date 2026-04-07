@@ -13,31 +13,40 @@ export const useHTMLPreview = (rawHtmlCode: string) => {
     const handler = setTimeout(() => {
       let finalHtml = rawHtmlCode;
 
-      // Collect CSS from all open tabs
+      // Collect CSS and JS from all open tabs
       let cssPayload = '';
+      let jsPayload = '';
       tabs.forEach(tab => {
         if (tab.language === 'css' && tab.content) {
           cssPayload += tab.content + '\n';
         }
+        if ((tab.language === 'javascript' || tab.language === 'typescript') && tab.content) {
+          jsPayload += tab.content + '\n';
+        }
       });
 
-      // Also collect CSS from saved files not currently open as a tab
-      const collectCssFromTree = (nodes: typeof files) => {
+      // Also collect CSS/JS from saved files not currently open as a tab
+      const collectFromTree = (nodes: typeof files) => {
         nodes.forEach(node => {
-          if (node.type === 'file' && node.language === 'css' && node.content) {
+          if (node.type === 'file' && node.content) {
             const alreadyInTab = tabs.some(t => t.name === node.name);
             if (!alreadyInTab) {
-              cssPayload += node.content + '\n';
+              if (node.language === 'css') {
+                cssPayload += node.content + '\n';
+              }
+              if (node.language === 'javascript' || node.language === 'typescript') {
+                jsPayload += node.content + '\n';
+              }
             }
           }
           if (node.children) {
-            collectCssFromTree(node.children);
+            collectFromTree(node.children);
           }
         });
       };
-      collectCssFromTree(files);
+      collectFromTree(files);
 
-      // Inject collected CSS into the HTML document
+      // Inject CSS into <head>
       if (cssPayload.trim()) {
         const styleBlock = `<style>\n${cssPayload.trim()}\n</style>`;
         if (finalHtml.includes('</head>')) {
@@ -45,8 +54,17 @@ export const useHTMLPreview = (rawHtmlCode: string) => {
         } else if (finalHtml.includes('<head>')) {
           finalHtml = finalHtml.replace('<head>', `<head>\n${styleBlock}`);
         } else {
-          // No head tag — prepend styles
           finalHtml = styleBlock + '\n' + finalHtml;
+        }
+      }
+
+      // Inject JS before </body> (so DOM is ready)
+      if (jsPayload.trim()) {
+        const scriptBlock = `<script>\n${jsPayload.trim()}\n</script>`;
+        if (finalHtml.includes('</body>')) {
+          finalHtml = finalHtml.replace('</body>', `${scriptBlock}\n</body>`);
+        } else {
+          finalHtml = finalHtml + '\n' + scriptBlock;
         }
       }
 

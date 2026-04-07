@@ -131,7 +131,7 @@ export const IDELayout: React.FC = () => {
             style={{ width: rightPanelWidth }}
           >
             {activeRightPanel === 'chat' && <ChatPanel className="flex-1" />}
-            {activeRightPanel === 'ai' && <AIAssistant className="flex-1" />}
+            {activeRightPanel === 'ai' && <AIAssistant className="flex-1" projectId={null} />}
           </div>
         )}
       </div>

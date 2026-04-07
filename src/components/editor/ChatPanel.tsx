@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, MoreVertical, Loader2, SmilePlus } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { useEditorStore } from '@/store/editorStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useChatMessages } from '@/hooks/useChatMessages';
@@ -132,41 +131,16 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
                 
                 <div className="relative">
                   <div className={cn(
-                    "chat-message p-2 rounded-md text-sm shadow-sm relative z-10 max-w-full overflow-hidden break-words prose prose-sm prose-invert", 
+                    "chat-message px-2 py-1 rounded-md text-sm shadow-sm relative z-10 w-fit min-w-0", 
                     isOwn ? "bg-primary/20 border border-primary/30 text-primary-foreground own" : "bg-secondary/50 border border-border text-foreground other",
                   )}>
-                    <ReactMarkdown
-                      components={{
-                        code({ node, children, ...props }: any) {
-                          const isBlock = String(children).includes('\n');
-                          return isBlock ? (
-                            <pre className="bg-black/60 p-2 rounded-md overflow-x-auto my-2 border border-primary/20 text-[11px] font-mono">
-                              <code className="text-muted-foreground">{children}</code>
-                            </pre>
-                          ) : (
-                            <code className="bg-black/40 rounded px-1 py-0.5 text-primary text-[11px] font-mono" {...props}>{children}</code>
-                          );
-                        },
-                        strong({ node, children, ...props }: any) {
-                          const text = Array.isArray(children) ? children.join('') : String(children ?? '');
-                          if (text.startsWith('@')) {
-                            return <strong className="text-primary font-bold bg-primary/10 px-1 rounded-sm border border-primary/20" {...props}>{children}</strong>;
-                          }
-                          return <strong className="font-bold text-foreground" {...props}>{children}</strong>;
-                        },
-                        p({ children, ...props }: any) {
-                          return <div className="m-0 break-words flex flex-col gap-2" {...props}>{children}</div>;
-                        }
-                      }}
-                    >
-                      {processedContent}
-                    </ReactMarkdown>
+                    <span className="whitespace-normal">{message.content}</span>
                   </div>
                   
                   {isPersisted && (
                     <div className={cn(
                       "absolute top-0 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-card border border-border rounded-full px-1 py-0.5 shadow-md z-20",
-                      isOwn ? "-left-16" : "-right-16"
+                      isOwn ? "-left-14" : "-right-14"
                     )}>
                       {['👍', '❤️', '🔥'].map(emoji => (
                          <button 

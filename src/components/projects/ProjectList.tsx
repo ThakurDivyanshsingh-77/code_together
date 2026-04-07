@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 import { 
   FolderOpen, 
@@ -9,8 +9,7 @@ import {
   Trash2,
   LogOut,
   Loader2,
-  UserPlus,
-  Pencil
+  Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ManageCollaboratorsDialog } from './ManageCollaboratorsDialog';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from '@/lib/time';
+import DarkModeToggle from "@/components/ui/DarkModeToggle";
 
 interface ProjectListProps {
   onSelectProject?: (project: { id: string; name: string; ownerId: string; role: string | null }) => void;
@@ -143,6 +143,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
         </div>
 
         <div className="flex items-center gap-4">
+          <DarkModeToggle />
           <div className="flex items-center gap-2">
             <div 
               className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
@@ -166,13 +167,14 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold">Projects</h1>
           
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                New Project
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-3">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  New Project
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create New Project</DialogTitle>
@@ -209,7 +211,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({ onSelectProject }) => 
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         {loading ? (

@@ -5,6 +5,8 @@ const router = express.Router();
 const SUPPORTED_ACTIONS = new Set([
   "explain_selected_code",
   "fix_bugs",
+  "fix_errors",
+  "fix_ui",
   "refactor_code",
   "generate_function",
   "chat_about_file",
@@ -35,6 +37,10 @@ const ACTION_INSTRUCTIONS = {
     "Explain the selected code in clear steps. Cover purpose, flow, edge cases, and complexity where relevant.",
   fix_bugs:
     "Find concrete bugs and provide corrected code. Mention each bug, why it is wrong, and the fix.",
+  fix_errors:
+    "Find and fix all errors in the provided code. Explain each issue and provide the corrected code.",
+  fix_ui:
+    "Fix UI/UX issues in the provided code. Improve layout, styling, accessibility, and user experience.",
   refactor_code:
     "Refactor for readability, maintainability, and performance without changing behavior. Provide improved code.",
   generate_function:
@@ -97,25 +103,23 @@ router.post("/chat", async (req, res) => {
       return res.status(400).json({ message: "Unsupported AI action" });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       return res.status(500).json({
-        message: "GEMINI_API_KEY is not configured on the server",
+        message: "GROQ_API_KEY is not configured on the server",
       });
     }
 
-    const initialModel = (process.env.GEMINI_MODEL || "gemini-2.5-flash").trim().replace(/['"]/g, '');
-    const fallbackModels = [initialModel, "gemini-2.5-flash", "gemini-1.5-flash-latest", "gemini-pro", "gemini-1.0-pro"];
+    const initialModel = "llama-3.1-8b-instant"; // Force working model
+    const fallbackModels = [initialModel, "mixtral-8x7b-32768", "gemma2-9b-it"];
     
     let reply = "";
     let finalModelUsed = initialModel;
-    let geminiResponse;
+    let groqResponse;
     let payload;
 
     for (const modelToTry of fallbackModels) {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-        modelToTry
-      )}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
+      const endpoint = `https://api.groq.com/openai/v1/chat/completions`;
 
       const finalPrompt = buildPrompt({
         action,
@@ -130,19 +134,23 @@ router.post("/chat", async (req, res) => {
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       try {
-        geminiResponse = await fetch(endpoint, {
+        groqResponse = await fetch(endpoint, {
           method: "POST",
           headers: {
+            "Authorization": `Bearer ${apiKey.trim()}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            contents: [...conversation, { role: "user", parts: [{ text: finalPrompt }] }],
-            generationConfig: {
-              temperature: 0.3,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 2048,
-            },
+            model: modelToTry,
+            messages: [
+              ...conversation.map(msg => ({ 
+                role: msg.role === "model" ? "assistant" : "user", 
+                content: msg.content || "" 
+              })).filter(msg => msg.content),
+              { role: "user", content: finalPrompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 2048,
           }),
           signal: controller.signal,
         });
@@ -150,16 +158,16 @@ router.post("/chat", async (req, res) => {
         clearTimeout(timeoutId);
       }
 
-      payload = await geminiResponse.json();
+      payload = await groqResponse.json();
 
-      if (geminiResponse.ok) {
-        reply = extractTextFromGeminiResponse(payload);
+      if (groqResponse.ok) {
+        reply = payload.choices?.[0]?.message?.content || "";
         finalModelUsed = modelToTry;
         break; 
       } else {
         // If error is about the model not found, try the next fallback.
         const errorMessage = payload?.error?.message || "";
-        if (errorMessage.includes("is not found") || errorMessage.includes("not supported")) {
+        if (errorMessage.includes("not found") || errorMessage.includes("not supported") || errorMessage.includes("invalid")) {
           continue; // Try next model in fallback list
         } else {
           // It's some other error, break out
@@ -168,14 +176,14 @@ router.post("/chat", async (req, res) => {
       }
     }
 
-    if (!geminiResponse.ok) {
-      const message = payload?.error?.message || "Gemini API request failed despite fallbacks";
+    if (!groqResponse.ok) {
+      const message = payload?.error?.message || "Groq API request failed despite fallbacks";
       return res.status(502).json({ message });
     }
 
     if (!reply) {
       return res.status(502).json({
-        message: "Gemini API returned an empty response",
+        message: "Groq API returned an empty response",
       });
     }
 

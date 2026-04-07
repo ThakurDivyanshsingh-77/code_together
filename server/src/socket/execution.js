@@ -1,4 +1,4 @@
-import { detectRunMode, runLocally, runWithJudge0 } from "../utils/runner.js";
+import { detectRunMode, runLocally, runWithJudge0, runShellCommand, getSocketCwd, clearSocketCwd } from "../utils/runner.js";
 
 const activeProcesses = new Map(); // socket.id -> ChildProcess
 
@@ -37,6 +37,17 @@ export const initializeExecutionSocket = (io) => {
       }
     });
 
+    socket.on("run-shell-command", ({ command, cwd }) => {
+      // Kill any existing process first
+      if (activeProcesses.has(socket.id)) {
+        const oldProcess = activeProcesses.get(socket.id);
+        oldProcess.kill();
+        activeProcesses.delete(socket.id);
+      }
+      
+      runShellCommand(command, cwd, socket, activeProcesses);
+    });
+
     socket.on("send-input", ({ input }) => {
       const child = activeProcesses.get(socket.id);
       if (child && !child.killed) {
@@ -54,12 +65,19 @@ export const initializeExecutionSocket = (io) => {
       activeProcesses.delete(socket.id);
     });
 
+    socket.on("get-cwd", () => {
+      const cwd = getSocketCwd(socket.id);
+      const defaultCwd = cwd || (process.platform === "win32" ? process.env.USERPROFILE : process.env.HOME) || "/";
+      socket.emit("cwd-changed", { cwd: defaultCwd });
+    });
+
     socket.on("disconnect", () => {
       const child = activeProcesses.get(socket.id);
       if (child && !child.killed) {
          child.kill();
       }
       activeProcesses.delete(socket.id);
+      clearSocketCwd(socket.id);
     });
   });
 };

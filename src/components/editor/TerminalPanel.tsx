@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronUp,
@@ -18,6 +18,7 @@ interface TerminalPanelProps {
   language?: string;
   filePath?: string;
   fileName?: string;
+  cwd?: string;
 }
 
 export const TerminalPanel: React.FC<TerminalPanelProps> = ({
@@ -27,29 +28,40 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
   language = 'javascript',
   filePath,
   fileName,
+  cwd = 'C:\\Projects',
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   
   const [isMinimized, setIsMinimized] = useState(false);
   const [inputValue, setInputValue] = useState('');
 
-  const { triggerRun } = useEditorStore();
+  const { triggerRun, pendingTerminalCommand, setPendingTerminalCommand } = useEditorStore();
 
   const {
     lines,
     isRunning,
     isWaitingInput,
+    currentCwd,
     runCode,
+    runShellCommand,
     sendInput,
     killProcess,
     clearTerminal,
   } = useTerminalSocket();
 
+  // Use tracked cwd from socket (falls back to prop then placeholder)
+  const displayPath = currentCwd || cwd || '';
+  const isWindows = displayPath.includes('\\');
+  const promptText = displayPath
+    ? (isWindows ? `${displayPath}>` : `${displayPath}$`)
+    : '~$';
+
   useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    if (pendingTerminalCommand) {
+      runShellCommand(pendingTerminalCommand, undefined);
+      setPendingTerminalCommand(null);
     }
-  }, [lines, isWaitingInput]);
+  }, [pendingTerminalCommand]);
 
   useEffect(() => {
     if (triggerRun > 0 && codeToRun) {
@@ -73,9 +85,19 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      const text = inputValue;
+      const text = inputValue.trim();
       setInputValue('');
-      sendInput(text);
+      
+      if (!text) return;
+      
+      // If a process is running and waiting for input, send it
+      if (isRunning && isWaitingInput) {
+        sendInput(text);
+        return;
+      }
+      
+      // Otherwise treat as shell command — use tracked cwd so backend stays in sync
+      runShellCommand(text, currentCwd || cwd);
     }
   };
 
@@ -93,9 +115,9 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
           <span className="text-[11px] font-medium tracking-wide uppercase" style={{ color: '#ffb86c' }}>
             Terminal
           </span>
-          {fileName && (
-            <span className="hidden md:inline px-1.5 py-0.5 text-[10px] rounded-sm truncate max-w-[220px]" style={{ backgroundColor: 'rgba(255, 184, 108, 0.1)', color: '#ffb86c' }}>
-              {fileName} ({language})
+          {displayPath && (
+            <span className="hidden lg:inline px-1.5 py-0.5 text-[10px] rounded-sm truncate max-w-[300px]" style={{ backgroundColor: 'rgba(98, 114, 164, 0.2)', color: '#6272a4' }}>
+              {displayPath}
             </span>
           )}
           {isRunning && (
@@ -179,16 +201,17 @@ export const TerminalPanel: React.FC<TerminalPanelProps> = ({
 
           {/* Persistent Input Box */}
           <div className="flex w-full items-center mt-2 border-t border-[#333] pt-2 shrink-0">
-            <span className="mr-2 text-lg leading-none shrink-0" style={{ color: '#50fa7b', transform: 'translateY(1px)' }}>›</span>
+            <span className="mr-2 text-[12px] font-mono shrink-0 text-muted-foreground">
+              {promptText}
+            </span>
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleInputKeyDown}
-              className="flex-1 bg-transparent outline-none border-none py-0.5"
-              style={{ color: '#50fa7b' }}
-              placeholder={isWaitingInput ? "type input and press enter..." : "send command to running process..."}
-              disabled={!isRunning}
+              className="flex-1 bg-transparent outline-none border-none py-0.5 text-[13px]"
+              style={{ color: '#f8f8f2' }}
+              placeholder={isWaitingInput ? "type input and press enter..." : isRunning ? "send input to running process..." : ""}
             />
           </div>
         </div>

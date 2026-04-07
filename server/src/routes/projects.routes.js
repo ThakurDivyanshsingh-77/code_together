@@ -127,20 +127,25 @@ router.patch("/:projectId", async (req, res) => {
 router.delete("/:projectId", async (req, res) => {
   try {
     const { projectId } = req.params;
+    console.log('Delete request received for project:', projectId);
 
     if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      console.log('Invalid project ID:', projectId);
       return res.status(404).json({ message: "Project not found" });
     }
 
     const project = await Project.findById(projectId);
     if (!project) {
+      console.log('Project not found in database:', projectId);
       return res.status(404).json({ message: "Project not found" });
     }
 
     if (project.owner.toString() !== req.auth.userId) {
+      console.log('User not authorized to delete project. Owner:', project.owner, 'Requester:', req.auth.userId);
       return res.status(403).json({ message: "Only the project owner can delete this project" });
     }
 
+    console.log('Deleting project and all related data for:', projectId);
     await Promise.all([
       Project.deleteOne({ _id: projectId }),
       ProjectCollaborator.deleteMany({ project: projectId }),
@@ -149,8 +154,10 @@ router.delete("/:projectId", async (req, res) => {
       ChatMessage.deleteMany({ project: projectId }),
     ]);
 
+    console.log('Successfully deleted project:', projectId);
     return res.json({ success: true });
   } catch (error) {
+    console.error('Failed to delete project:', error);
     return res.status(500).json({ message: "Failed to delete project" });
   }
 });

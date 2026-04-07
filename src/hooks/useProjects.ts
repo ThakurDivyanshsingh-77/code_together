@@ -94,11 +94,15 @@ export const useProjects = () => {
   };
 
   const deleteProject = async (projectId: string) => {
+    console.log('Attempting to delete project:', projectId);
     try {
+      console.log('Making DELETE request to:', `/projects/${projectId}`);
       await apiRequest(`/projects/${projectId}`, { method: "DELETE" });
+      console.log('Delete request successful, removing from local state');
       setProjects((prev) => prev.filter((project) => project.id !== projectId));
       return { error: null };
     } catch (error) {
+      console.error('Delete project failed:', error);
       return { error: error as Error };
     }
   };

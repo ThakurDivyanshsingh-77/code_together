@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink, RefreshCw, X } from 'lucide-react';
 import { useHTMLPreview } from '@/hooks/useHTMLPreview';
 import { cn } from '@/lib/utils';
 
 interface HTMLPreviewProps {
   code: string;
   className?: string;
+  onClose?: () => void;
 }
 
-export const HTMLPreview: React.FC<HTMLPreviewProps> = ({ code, className }) => {
+export const HTMLPreview: React.FC<HTMLPreviewProps> = ({ code, className, onClose }) => {
   const { previewHtml, generateBlobUrl } = useHTMLPreview(code);
   // refreshKey forces the iframe to fully remount
   const [refreshKey, setRefreshKey] = useState(0);
@@ -44,6 +45,15 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({ code, className }) => 
           >
             <ExternalLink className="w-3.5 h-3.5" />
           </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              title="Close preview"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

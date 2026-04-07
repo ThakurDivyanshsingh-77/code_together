@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,92 +6,174 @@
 
 @layer base {
   :root {
-    --background: 240 20% 5%; /* #0a0a0f */
-    --foreground: 0 0% 88%; /* #e0e0e0 */
+    /* GitHub Dark — #0d1117 base */
+    --background: 216 28% 7%;        /* #0d1117 */
+    --foreground: 210 17% 82%;       /* #cdd9e5 */
 
-    --card: 240 18% 9%; /* #12121a */
-    --card-foreground: 0 0% 88%;
-    --popover: 240 18% 9%;
-    --popover-foreground: 0 0% 88%;
+    --card: 214 22% 11%;             /* #161b22 */
+    --card-foreground: 210 17% 82%;
+    --popover: 214 22% 11%;
+    --popover-foreground: 210 17% 82%;
 
-    --sidebar: 240 18% 9%;
-    --sidebar-foreground: 0 0% 88%;
-    --sidebar-hover: 240 24% 15%;
-    --sidebar-active: 152 100% 50%;
+    --sidebar: 214 22% 11%;          /* #161b22 */
+    --sidebar-foreground: 213 9% 65%;
+    --sidebar-hover: 215 16% 15%;    /* #21262d */
+    --sidebar-active: 212 100% 67%;  /* #58a6ff */
 
-    --editor: 240 20% 5%;
-    --editor-foreground: 0 0% 88%;
-    --editor-line: 240 24% 15%;
-    --editor-selection: 152 100% 50%;
-    --editor-gutter: 215 14% 46%;
+    --editor: 216 28% 7%;            /* #0d1117 */
+    --editor-foreground: 210 17% 82%;
+    --editor-line: 215 18% 13%;
+    --editor-selection: 212 92% 45%;
+    --editor-gutter: 213 9% 50%;
 
-    --primary: 152 100% 50%; /* #00ff88 */
-    --primary-foreground: 240 20% 5%;
+    --primary: 212 100% 67%;         /* #58a6ff — GitHub blue */
+    --primary-foreground: 216 28% 7%;
 
-    --secondary: 300 100% 50%; /* #ff00ff */
-    --secondary-foreground: 240 20% 5%;
+    --secondary: 215 16% 15%;        /* #21262d */
+    --secondary-foreground: 210 17% 82%;
 
-    --muted: 240 24% 15%; /* #1c1c2e */
-    --muted-foreground: 215 14% 46%; /* #6b7280 */
+    --muted: 215 16% 15%;            /* #21262d */
+    --muted-foreground: 213 9% 58%;  /* #8b949e */
 
-    --accent: 152 100% 50%;
-    --accent-foreground: 240 20% 5%;
+    --accent: 212 100% 67%;
+    --accent-foreground: 216 28% 7%;
 
-    --accent-secondary: 300 100% 50%;
-    --accent-tertiary: 190 100% 50%;
+    --accent-secondary: 265 89% 76%; /* #bc8cff — GitHub purple */
+    --accent-tertiary: 210 100% 74%; /* #79c0ff — GitHub light blue */
 
-    --destructive: 345 100% 60%; /* #ff3366 */
+    --destructive: 3 93% 63%;        /* #f85149 */
     --destructive-foreground: 0 0% 100%;
+
+    --success: 128 45% 49%;          /* #3fb950 */
+    --success-foreground: 216 28% 7%;
+    --warning: 41 72% 48%;           /* #d29922 */
+    --warning-foreground: 216 28% 7%;
+    --info: 212 100% 67%;
+    --info-foreground: 216 28% 7%;
+
+    --syntax-keyword: 265 89% 76%;   /* purple */
+    --syntax-string: 128 50% 62%;    /* green */
+    --syntax-number: 41 72% 65%;     /* amber */
+    --syntax-function: 210 100% 74%; /* light blue */
+    --syntax-variable: 210 17% 82%;
+    --syntax-comment: 213 9% 50%;    /* gray */
+    --syntax-type: 210 100% 74%;
+    --syntax-operator: 212 100% 67%;
+
+    --border: 213 13% 21%;           /* #30363d */
+    --input: 214 22% 11%;
+    --ring: 212 100% 67%;
+    --radius: 6px;
+
+    --tab: 214 22% 11%;
+    --tab-active: 216 28% 7%;
+    --tab-border: 213 13% 21%;
+    --tab-foreground: 213 9% 58%;
+    --tab-active-foreground: 210 17% 82%;
+
+    --statusbar: 214 22% 9%;
+    --statusbar-foreground: 213 9% 58%;
+
+    --terminal: 216 28% 5%;
+    --terminal-foreground: 210 17% 78%;
+
+    --minimap: 216 28% 7%;
+
+    --scrollbar: 213 13% 22%;
+    --scrollbar-hover: 212 100% 67%;
+
+    --user-1: 212 100% 67%;   /* blue */
+    --user-2: 265 89% 76%;    /* purple */
+    --user-3: 128 45% 49%;    /* green */
+    --user-4: 3 93% 63%;      /* red */
+    --user-5: 41 72% 48%;     /* amber */
+    --user-6: 210 100% 74%;   /* light blue */
+
+    --git-added: 128 45% 49%;
+    --git-modified: 41 72% 48%;
+    --git-deleted: 3 93% 63%;
+    --git-untracked: 213 9% 50%;
+  }
+
+  .light {
+    --background: 0 0% 98%; /* #fafafa */
+    --foreground: 240 10% 20%; /* #333333 */
+
+    --card: 0 0% 100%; /* #ffffff */
+    --card-foreground: 240 10% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 20%;
+
+    --sidebar: 0 0% 96%; /* #f5f5f5 */
+    --sidebar-foreground: 240 10% 30%;
+    --sidebar-hover: 0 0% 92%; /* #ededed */
+    --sidebar-active: 152 76% 35%; /* #22c55e */
+
+    --editor: 0 0% 100%; /* #ffffff */
+    --editor-foreground: 240 10% 20%;
+    --editor-line: 0 0% 96%; /* #f5f5f5 */
+    --editor-selection: 152 76% 35%; /* #22c55e */
+    --editor-gutter: 0 0% 92%; /* #ededed */
+
+    --primary: 152 76% 35%; /* #22c55e */
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 5% 85%; /* #e2e8f0 */
+    --secondary-foreground: 240 10% 20%;
+
+    --muted: 240 5% 92%; /* #f1f5f9 */
+    --muted-foreground: 240 8% 46%; /* #64748b */
+
+    --accent: 152 76% 35%;
+    --accent-foreground: 0 0% 98%;
+
+    --accent-secondary: 240 5% 85%;
+    --accent-tertiary: 190 82% 37%; /* #06b6d4 */
+
+    --destructive: 0 84% 60%; /* #ef4444 */
+    --destructive-foreground: 0 0% 98%;
     
-    --success: 152 100% 50%;
-    --success-foreground: 240 20% 5%;
-    --warning: 39 100% 50%;
-    --warning-foreground: 240 20% 5%;
-    --info: 190 100% 50%;
-    --info-foreground: 240 20% 5%;
+    --success: 152 76% 35%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%; /* #f59e0b */
+    --warning-foreground: 0 0% 98%;
+    --info: 190 82% 37%;
+    --info-foreground: 0 0% 98%;
 
-    --syntax-keyword: 300 100% 50%;
-    --syntax-string: 152 100% 50%;
-    --syntax-number: 190 100% 50%;
-    --syntax-function: 152 100% 50%;
-    --syntax-variable: 0 0% 88%;
-    --syntax-comment: 215 14% 46%;
-    --syntax-type: 190 100% 50%;
-    --syntax-operator: 300 100% 50%;
+    --syntax-keyword: 240 5% 40%; /* #6366f1 */
+    --syntax-string: 152 76% 35%; /* #22c55e */
+    --syntax-number: 38 92% 50%; /* #f59e0b */
+    --syntax-function: 240 5% 40%; /* #6366f1 */
+    --syntax-variable: 240 10% 20%;
+    --syntax-comment: 240 8% 46%; /* #64748b */
+    --syntax-type: 190 82% 37%; /* #06b6d4 */
+    --syntax-operator: 240 10% 20%;
 
-    --border: 240 16% 20%; /* #2a2a3a */
-    --input: 240 18% 9%; /* #12121a */
-    --ring: 152 100% 50%; /* #00ff88 */
-    --radius: 0px;
+    --border: 240 6% 90%; /* #e2e8f0 */
+    --input: 0 0% 100%; /* #ffffff */
+    --ring: 152 76% 35%; /* #22c55e */
 
-    --tab: 240 18% 9%;
-    --tab-active: 240 20% 5%;
-    --tab-border: 240 16% 20%;
-    --tab-foreground: 215 14% 46%;
-    --tab-active-foreground: 152 100% 50%;
+    --tab: 0 0% 96%; /* #f5f5f5 */
+    --tab-active: 0 0% 100%; /* #ffffff */
+    --tab-border: 240 6% 90%; /* #e2e8f0 */
+    --tab-foreground: 240 8% 46%; /* #64748b */
+    --tab-active-foreground: 152 76% 35%; /* #22c55e */
 
-    --statusbar: 152 100% 50%;
-    --statusbar-foreground: 240 20% 5%;
+    --statusbar: 0 0% 96%; /* #f5f5f5 */
+    --statusbar-foreground: 240 10% 30%;
 
-    --terminal: 240 20% 5%;
-    --terminal-foreground: 152 100% 50%;
+    --terminal: 0 0% 0%; /* #000000 */
+    --terminal-foreground: 152 76% 35%; /* #22c55e */
 
-    --minimap: 240 20% 5%;
+    --minimap: 0 0% 96%; /* #f5f5f5 */
 
-    --scrollbar: 240 16% 20%;
-    --scrollbar-hover: 152 100% 50%;
+    --scrollbar: 240 6% 90%; /* #e2e8f0 */
+    --scrollbar-hover: 152 76% 35%; /* #22c55e */
 
-    --user-1: 152 100% 50%;
-    --user-2: 300 100% 50%;
-    --user-3: 190 100% 50%;
-    --user-4: 345 100% 60%;
-    --user-5: 39 100% 50%;
-    --user-6: 250 100% 65%;
-
-    --git-added: 152 100% 50%;
-    --git-modified: 190 100% 50%;
-    --git-deleted: 345 100% 60%;
-    --git-untracked: 215 14% 46%;
+    --git-added: 152 76% 35%;
+    --git-modified: 190 82% 37%;
+    --git-deleted: 0 84% 60%;
+    --git-untracked: 240 8% 46%;
   }
 }
 
@@ -101,7 +183,7 @@
   }
 
   html {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
   body {
@@ -118,7 +200,9 @@
   .font-mono,
   code,
   pre,
-  .monaco-editor {
+  .monaco-editor,
+  input[type='text'].font-mono,
+  textarea.font-mono {
     font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
   }
 

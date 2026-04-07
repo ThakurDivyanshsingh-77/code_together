@@ -13,6 +13,8 @@ import filesRoutes from "./routes/files.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import presenceRoutes from "./routes/presence.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
+import aiFilesRoutes from "./routes/ai.files.routes.js";
+import localfsRoutes from "./routes/localfs.routes.js";
 import { initializeCollaborationSocket } from "./socket/collaboration.js";
 import { initializeExecutionSocket } from "./socket/execution.js";
 
@@ -47,6 +49,8 @@ app.use("/api/projects", requireAuth, filesRoutes);
 app.use("/api/projects", requireAuth, chatRoutes);
 app.use("/api/projects", requireAuth, presenceRoutes);
 app.use("/api/ai", requireAuth, aiRoutes);
+app.use("/api/ai", requireAuth, aiFilesRoutes);
+app.use("/api/local", requireAuth, localfsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
