@@ -150,7 +150,7 @@ router.post("/chat", async (req, res) => {
               { role: "user", content: finalPrompt }
             ],
             temperature: 0.3,
-            max_tokens: 2048,
+            max_tokens: 3000,
           }),
           signal: controller.signal,
         });
