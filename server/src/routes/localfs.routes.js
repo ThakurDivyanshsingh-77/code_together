@@ -1,6 +1,7 @@
 import express from "express";
 import fs from "fs/promises";
 import path from "path";
+import { readFileSync } from "fs";
 import File from "../models/File.js";
 import Project from "../models/Project.js";
 import { getProjectAccess } from "../utils/projectAccess.js";
@@ -243,8 +244,16 @@ router.post("/browse", async (req, res) => {
 
     // No path → return filesystem roots
     if (!dirPath) {
+      // Detect WSL: /proc/version contains "microsoft" or "WSL"
+      const isWSL = (() => {
+        try {
+          const v = readFileSync("/proc/version", "utf8").toLowerCase();
+          return v.includes("microsoft") || v.includes("wsl");
+        } catch { return false; }
+      })();
+
       if (process.platform === "win32") {
-        // List available drive letters A-Z
+        // Native Windows — list drive letters A-Z
         const drives = [];
         for (let code = 65; code <= 90; code++) {
           const letter = String.fromCharCode(code);
@@ -252,11 +261,27 @@ router.post("/browse", async (req, res) => {
           try {
             await fs.access(root);
             drives.push({ name: `${letter}:`, path: root, type: "drive" });
-          } catch {
-            // drive doesn't exist, skip
-          }
+          } catch { /* skip */ }
         }
         return res.json({ parent: null, dirs: drives });
+      } else if (isWSL) {
+        // WSL — Windows drives are mounted at /mnt/[a-z]
+        const drives = [];
+        for (let code = 97; code <= 122; code++) {
+          const letter = String.fromCharCode(code);
+          const mountPath = `/mnt/${letter}`;
+          try {
+            const stat = await fs.stat(mountPath);
+            if (stat.isDirectory()) {
+              drives.push({ name: `${letter.toUpperCase()}:`, path: mountPath, type: "drive" });
+            }
+          } catch { /* skip */ }
+        }
+        if (drives.length > 0) {
+          return res.json({ parent: null, dirs: drives });
+        }
+        // WSL but no /mnt drives found — fall through to "/"
+        return res.json({ parent: null, dirs: [{ name: "/", path: "/", type: "drive" }] });
       } else {
         return res.json({ parent: null, dirs: [{ name: "/", path: "/", type: "drive" }] });
       }
@@ -518,6 +543,104 @@ router.post("/projects/:projectId/write-to-disk", async (req, res) => {
   } catch (error) {
     console.error("write-to-disk error:", error);
     return res.status(500).json({ message: "Failed to write project to disk" });
+  }
+});
+
+/**
+ * POST /api/local/upload
+ * Body: { projectId: string, files: [{ path, name, content, language, parentPath }] }
+ * Accepts file contents sent directly from the browser — no server filesystem access needed.
+ * Replaces all existing project files (same behaviour as /import).
+ */
+router.post("/upload", async (req, res) => {
+  try {
+    const projectId = String(req.body?.projectId || "").trim();
+    const files = req.body?.files;
+
+    if (!projectId) {
+      return res.status(400).json({ message: "projectId is required" });
+    }
+    if (!Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({ message: "files array is required and must not be empty" });
+    }
+
+    const access = await getProjectAccess(req.auth.userId, projectId);
+    if (!access.exists) return res.status(404).json({ message: "Project not found" });
+    if (!access.hasAccess || !access.canEdit) {
+      return res.status(403).json({ message: "You do not have edit access to this project" });
+    }
+
+    // Wipe existing files
+    await File.deleteMany({ project: projectId });
+
+    // Derive unique folder paths from file paths and create folder docs
+    const folderPaths = new Set();
+    for (const file of files) {
+      const parts = String(file.path || "").split("/").filter(Boolean);
+      for (let i = 1; i < parts.length; i++) {
+        folderPaths.add("/" + parts.slice(0, i).join("/"));
+      }
+    }
+
+    const folderDocs = [];
+    for (const folderPath of folderPaths) {
+      const parts = folderPath.split("/").filter(Boolean);
+      const name = parts[parts.length - 1];
+      const parentPath = parts.length > 1 ? "/" + parts.slice(0, -1).join("/") : null;
+      const doc = await File.create({
+        project: projectId,
+        name,
+        path: folderPath,
+        type: "folder",
+        content: null,
+        language: null,
+        revision: 0,
+        parentPath,
+      });
+      folderDocs.push(doc);
+    }
+
+    // Create file docs
+    const fileDocs = [];
+    const userName = req.auth.user?.displayName || req.auth.user?.email || "Unknown";
+    for (const file of files) {
+      const doc = await File.create({
+        project: projectId,
+        name: String(file.name || ""),
+        path: String(file.path || ""),
+        type: "file",
+        content: file.content ?? "",
+        language: file.language || "plaintext",
+        revision: 1,
+        parentPath: file.parentPath ?? null,
+      });
+
+      await createFileVersionSnapshot({
+        file: doc,
+        userId: req.auth.userId,
+        userName,
+        source: "import",
+      });
+
+      fileDocs.push(doc);
+    }
+
+    await Project.findByIdAndUpdate(projectId, { updatedAt: new Date() });
+
+    const collaboration = req.app.get("collaboration");
+    collaboration?.emitProjectEvent?.(projectId, "project-file-event", {
+      type: "files-imported",
+      project_id: projectId,
+    });
+
+    return res.json({
+      folders_created: folderDocs.length,
+      files_created: fileDocs.length,
+      total: folderDocs.length + fileDocs.length,
+    });
+  } catch (error) {
+    console.error("local/upload error:", error);
+    return res.status(500).json({ message: "Failed to upload files" });
   }
 });
 

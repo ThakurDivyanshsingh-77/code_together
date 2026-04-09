@@ -79,7 +79,7 @@ const Index = () => {
         <nav className="hidden md:flex items-center gap-8 font-mono text-sm text-muted-foreground select-none">
           <a href="#features" className="hover:text-primary transition-colors">[FEATURES]</a>
           <a href="#" className="hover:text-primary transition-colors">[PRICING]</a>
-          <a href="#" className="hover:text-primary transition-colors">[ABOUT]</a>
+          <a href="/about" className="hover:text-primary transition-colors">[ABOUT]</a>
         </nav>
 
         <div className="flex items-center gap-6 font-mono text-sm">
@@ -161,14 +161,14 @@ const Index = () => {
                 </div>
 
                 {/* Module 2: CPU Load */}
-                <div className="flex flex-col items-center justify-center border border-secondary/30 bg-[#12121a] relative group">
-                   <div className="absolute top-2 left-2 w-2 h-2 bg-secondary/50" />
-                   <div className="absolute bottom-2 right-2 w-2 h-2 border border-secondary/50" />
+                <div className="flex flex-col items-center justify-center border border-primary/30 bg-[#12121a] relative group">
+                   <div className="absolute top-2 left-2 w-2 h-2 bg-primary/50" />
+                   <div className="absolute bottom-2 right-2 w-2 h-2 border border-primary/50" />
                    
-                   <div className="text-4xl md:text-5xl font-bold text-secondary font-heading tracking-tighter shadow-secondary drop-shadow-[0_0_10px_rgba(255,0,255,0.6)]">
+                   <div className="text-4xl md:text-5xl font-bold text-primary font-heading tracking-tighter drop-shadow-[0_0_10px_rgba(0,255,136,0.6)]">
                      98%
                    </div>
-                   <div className="text-[10px] font-mono text-secondary uppercase tracking-widest mt-1">
+                   <div className="text-[10px] font-mono text-primary uppercase tracking-widest mt-1">
                      CPU_LOAD
                    </div>
                 </div>
