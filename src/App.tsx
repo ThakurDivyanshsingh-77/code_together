@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ProjectList } from "@/components/projects/ProjectList";
@@ -30,8 +31,12 @@ const App = () => (
             
             {/* Auth Routes */}
             <Route path="/login" element={<AuthForm />} />
+            <Route path="/about" element={<About />} />
             <Route path="/register" element={<AuthForm />} />
             
+            {/* Public Demo Route */}
+            <Route path="/editor/demo" element={<CollaborativeEditor />} />
+
             {/* Protected Routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<ProjectList />} />

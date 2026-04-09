@@ -140,7 +140,7 @@ User request: ${fullPrompt}`;
             model: modelToTry,
             messages: [{ role: "user", content: aiPrompt }],
             temperature: 0.3,
-            max_tokens: 2048,
+            max_tokens: 3000,
           }),
           signal: controller.signal,
         });
@@ -336,7 +336,7 @@ Example — user says "add inline CSS to login.html":
               { role: "user", content: userMessage },
             ],
             temperature: 0.2,
-            max_tokens: 1500,
+            max_tokens: 3000,
           }),
           signal: controller.signal,
         });

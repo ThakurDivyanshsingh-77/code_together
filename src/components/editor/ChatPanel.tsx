@@ -75,7 +75,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
         </button>
       </div>
 
-      <div className="px-2 py-2 border-b border-border flex items-center gap-1.5 overflow-x-auto">
+      <div className="px-2 py-2 border-b border-border flex items-center gap-1.5 flex-wrap">
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-secondary text-[11px]">
           <span 
             className="w-2 h-2 rounded-full"
@@ -97,7 +97,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2">
         {loading && isPersisted ? (
           <div className="flex justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -129,18 +129,18 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className, projectId }) =>
                   </div>
                 )}
                 
-                <div className="relative">
+                <div className="relative max-w-full">
                   <div className={cn(
-                    "chat-message px-2 py-1 rounded-md text-sm shadow-sm relative z-10 w-fit min-w-0", 
+                    "chat-message px-2 py-1 rounded-md text-sm shadow-sm relative z-10 max-w-full", 
                     isOwn ? "bg-primary/20 border border-primary/30 text-primary-foreground own" : "bg-secondary/50 border border-border text-foreground other",
                   )}>
-                    <span className="whitespace-normal">{message.content}</span>
+                    <span className="whitespace-normal break-words" style={{ overflowWrap: 'anywhere' }}>{message.content}</span>
                   </div>
                   
                   {isPersisted && (
                     <div className={cn(
                       "absolute top-0 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-card border border-border rounded-full px-1 py-0.5 shadow-md z-20",
-                      isOwn ? "-left-14" : "-right-14"
+                      isOwn ? "left-0" : "right-0"
                     )}>
                       {['👍', '❤️', '🔥'].map(emoji => (
                          <button 
